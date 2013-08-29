@@ -1,5 +1,6 @@
 #' Show the distribution of infection levels
-#' @import ggplot2 data.table noamtools scales
+#' @import ggplot2 data.table noamtools
+#' @importFrom scales rescale_none
 #' @export
 sodi_infectionsplot = function(sodi, times) {
   parms = attr(sodi, "parms")

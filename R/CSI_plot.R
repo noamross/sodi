@@ -1,5 +1,5 @@
 #' Plot a heat map of the CSI matrix
-#' @import ggplot2 reshape2 scales
+#' @import ggplot2 reshape2
 #' @export
 CSI_plot = function(CSI, times) {
     CSI_times = as.numeric(dimnames(CSI)$time)
@@ -8,12 +8,13 @@ CSI_plot = function(CSI, times) {
     
     d_CSI = melt(CSI[,,CSI_times %in% matched_times])
     lims = c(min(CSI, na.rm=TRUE),max(CSI, na.rm=TRUE))
+    lim_rescale = (c(lims[1],0,lims[2]) - lims[1])/(lims[2] - lims[1])
     plot = ggplot(d_CSI, aes(x=Var1, y=Var2, fill=value)) + 
            geom_tile(color="white", lwd=2) +
            coord_fixed() +
            scale_fill_gradientn(limits=lims, colours=c("red", "white", "blue"),
-                                values=scales::rescale(c(lims[1],0,lims[2])),
-                                space="rgb", na.value="grey80") +
+                                values=lim_rescale, space="rgb",
+                                na.value="grey80") +
            scale_x_discrete(limits = dimnames(CSI)[[2]] ) +
            scale_y_discrete(limits = dimnames(CSI)[[2]]) + theme_nr +
            theme(panel.grid.major.y=element_blank(),
