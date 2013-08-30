@@ -1,5 +1,7 @@
+install.packages("~/Dropbox/code/sodi/", type="source", repos=NULL)
 library(sodi)
 library(data.table)
+library(spatstat)
 
 parms <- list(
   K=150,                 #Carrying capacity
@@ -36,6 +38,6 @@ sodi_SItimepolot(sodi)
 
 manipulate(sodi_infectionsplot(sodi, TIME), TIME=slider(0,tail(parms$times,1),0))
 
-C_SI = CSI(sodi, progress="time", n.quantiles=6)
+C_SI = CSI(sodi, progress="time", n.quantiles=3)
 
 manipulate(CSI_plot(C_SI, TIME), TIME=slider(0,tail(parms$times,1),0))
