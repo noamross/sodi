@@ -1,6 +1,6 @@
 #' Calculate an array of C_SI values.  Takes simulation
 #' output of a single time point
-#' @import data.table
+#' @import data.table spatstat
 #' @export
 CSI = function(sodi, times=NULL, progress="none", n.quantiles=6) {
   parms = attr(sodi, "parms")
@@ -35,6 +35,7 @@ CSI = function(sodi, times=NULL, progress="none", n.quantiles=6) {
 
 #'Calculate C_SI for a single time step
 #'@import spatstat Bolstad
+#'@export
 CSI_step = function(sodi_step, parms) {
   groupcounts = table(sodi_step$mark)
   groupcounts = groupcounts %o% groupcounts
