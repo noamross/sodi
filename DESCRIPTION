@@ -7,6 +7,10 @@ Author: Noam Ross <noam.ross@gmail.com>
 Maintainer: Noam Ross <noam.ross@gmail.com>
 Description: More about what it does (maybe more than one line)
 License: CC-0
+Depends:
+    Rcpp (>= 0.9.10),
+    RcppArmadillo (>= 3.910.0)
+LinkingTo: Rcpp, RcppArmadillo
 Collate:
     'run_sodi.R'
     'sodi_SItimeplot.R'
@@ -16,3 +20,5 @@ Collate:
     'sodi_CSI.R'
     'CSI_plot.R'
     'run_sodi_cpp.R'
+    'sodi-package.R'
+    'RcppExports.R'
