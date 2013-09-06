@@ -7,11 +7,7 @@ Author: Noam Ross <noam.ross@gmail.com>
 Maintainer: Noam Ross <noam.ross@gmail.com>
 Description: More about what it does (maybe more than one line)
 License: CC-0
-Depends:
-    Rcpp (>= 0.10.3)
-LinkingTo: Rcpp
 Collate:
-    'RcppExports.R'
     'run_sodi.R'
     'sodi_SItimeplot.R'
     'sodi_spatialplot.R'
@@ -19,4 +15,4 @@ Collate:
     'match_times.R'
     'sodi_CSI.R'
     'CSI_plot.R'
-    'sodi-package.R'
+    'run_sodi_cpp.R'

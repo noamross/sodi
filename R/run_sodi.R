@@ -88,12 +88,29 @@ initiate <- function(parms) {
   pop[,"x"] = runif(nrow(pop),min=bbox[1], max=bbox[2])
   pop[,"y"] = runif(nrow(pop),min=bbox[1], max=bbox[2])
   pop[,"stage"] = stages0
-  pop[,"infections"] = 0
   pop[,"alive"] = 1
+  pop[,"infections"] = 0
   pop[1:infect0,"infections"] = 1
   pop[,"force"] = force_on(pop, 1:nrow(pop), parms)
   return(pop)
 }
+
+#' @export
+initiate2 <- function(parms) {
+  list2env(parms, environment())
+  pop =  matrix(0, nrow=K, ncol=7)
+  colnames(pop) = c("time", "ID","x","y","stage","infections", "force")
+  pop[,"time"] = times[1]
+  pop[,"ID"] = c(1:n0, rep(0, K-n0))
+  pop[,"x"] = c(runif(n0,min=bbox[1], max=bbox[2]), rep(0, K-n0))
+  pop[,"y"] = c(runif(n0,min=bbox[1], max=bbox[2]), rep(0, K-n0))
+  pop[,"stage"] = c(stages0, rep(0, K-n0))
+  pop[,"infections"] = c(rep(0, n0), rep(0, K-n0))
+  pop[,"alive"] = c(rep(1, n0), rep(0, K-n0))
+  pop[,"force"] = c(force_on(pop, 1:n0, parms), rep(0, K-n0))
+  return(pop)
+}
+
 
 #' @import plyr
 force_on <- function(pop, j, parms) {

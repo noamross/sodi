@@ -1,7 +1,7 @@
 #' Plot a heat map of the CSI matrix
 #' @import ggplot2 reshape2
 #' @export
-CSI_plot = function(CSI, times) {
+CSI_plot = function(CSI, times, counts=FALSE, sodi=NULL) {
     CSI_times = as.numeric(dimnames(CSI)$time)
     matched_times = CSI_times[approx(x = CSI_times, y = 1:length(CSI_times),
                             xout = times, method = "constant", rule = 2)$y]
@@ -20,10 +20,7 @@ CSI_plot = function(CSI, times) {
            theme(panel.grid.major.y=element_blank(),
                  axis.ticks.x=element_blank()) +
            xlab("No. Infections") + ylab("No. Infections")
-            
-    
-
-    
+                
     if (length(times) > 1) plot = plot + facet_wrap(~time)
     
     return(plot)

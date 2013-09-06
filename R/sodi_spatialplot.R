@@ -3,9 +3,11 @@
 #' If there are multiple time points, facet along these
 #' @import ggplot2 data.table
 #' @export
-sodi_spatialplot = function(sodi, times) {
+sodi_spatialplot = function(sodi, times, dead=FALSE) {
   parms = attr(sodi, "parms")
   max_infections = max(sodi$infections)  
+  
+  if(!dead) sodi = subset(sodi, alive==1)
   
   matched_times = match_times(sodi, times)
   

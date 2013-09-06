@@ -4,18 +4,18 @@ library(data.table)
 library(spatstat)
 
 parms <- list(
-  K=150,                 #Carrying capacity
-  bbox = c(0,sqrt(150),0,sqrt(150)),   #Area dimensions
-  n0 = 150,               #Initial population
+  K=200,                 #Carrying capacity
+  bbox = c(0,sqrt(200),0,sqrt(200)),   #Area dimensions
+  n0 = 200,               #Initial population
   infect0=1,             #Number of infected individuals at start
-  stages0=rep(1,10),     #Distribution of size classes
+  stages0=rep(1,200),     #Distribution of size classes
   dispersal = function(d, a = 1) {
     dnorm(x=d, mean=0, sd=a)
   },
   disp_limit = 10,
-  times = seq(0,25,0.25), #Times to report.  If a single number, the max time, and all events will be recorded
+  times = seq(0,500,1), #Times to report.  If a single number, the max time, and all events will be recorded
   n_stages = 2,          #Size stages of
-  f = c(0.01, 0.01),     #Fecundity parameter
+  f = c(0.1, 0.1),     #Fecundity parameter
   g = c(0.1, 0),         #Growth rates
   d = c(0.005, 0.005),   #Death rates
   r = c(0.5, 0.5),       #Resprout probability at death from disease
@@ -32,12 +32,15 @@ sodi = run_sodi(parms, progress=TRUE)
 Rprof(NULL)
 
 library(manipulate)
-manipulate(sodi_spatialplot(sodi, TIME), TIME = slider(0, tail(parms$times, 1), step=0.25))
+manipulate(sodi_spatialplot(sodi, TIME), TIME = slider(0, tail(parms$times, 1), step=1))
+
+manipulate(sodi_infectionsplot(sodi, TIME), TIME=slider(0,tail(parms$times,1),1, step=1))
+
+manipulate(sodi_infectionsdensplot(sodi, TIME), TIME=slider(0,tail(parms$times,1),1, step=1))
 
 sodi_SItimepolot(sodi)
 
-manipulate(sodi_infectionsplot(sodi, TIME), TIME=slider(0,tail(parms$times,1),0))
 
-C_SI = CSI(sodi, progress="time", n.quantiles=3)
+C_SI = CSI(sodi, progress="time", n.quantiles=6)
 
-manipulate(CSI_plot(C_SI, TIME), TIME=slider(0,tail(parms$times,1),0))
+manipulate(CSI_plot(C_SI, TIME), TIME=slider(0,tail(parms$times,1),0, step=1))
