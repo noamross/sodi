@@ -124,7 +124,7 @@ List run_sodi_rcpp(DataFrame init, List parms, bool progress) {
   arma::vec (*kernel)(arma::vec d, arma::vec m);
   arma::vec (*kernel2)(arma::vec d, double m);
   if(dispersalfn == 0) {
-    m.fill(1/((bbox(0) - bbox(1))*(bbox(2) - bbox(3))));
+    m.fill(1/((bbox(1) - bbox(0))*(bbox(3) - bbox(2))));
     kernel = flatdisp;
     kernel2 = flatdisp2;
   } else if(dispersalfn == 1) {
