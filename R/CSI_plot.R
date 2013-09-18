@@ -2,7 +2,7 @@
 #' @import ggplot2 reshape2
 #' @export
 CSI_plot = function(CSI, times, counts=FALSE, sodi=NULL) {
-    CSI_times = as.numeric(dimnames(CSI)$time)
+    CSI_times = as.numeric(dimnames(CSI)$Time)
     matched_times = CSI_times[approx(x = CSI_times, y = 1:length(CSI_times),
                             xout = times, method = "constant", rule = 2)$y]
     
