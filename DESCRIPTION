@@ -9,7 +9,8 @@ Description: More about what it does (maybe more than one line)
 License: CC-0
 Depends:
     Rcpp (>= 0.9.10),
-    RcppArmadillo (>= 0.3.910.0)
+    RcppArmadillo (>= 0.3.910.0),
+    data.table
 LinkingTo: Rcpp, RcppArmadillo
 Collate:
     'run_sodi.R'
