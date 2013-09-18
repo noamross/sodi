@@ -1,8 +1,8 @@
-\name{sodi_spatialplot}
-\alias{sodi_spatialplot}
+\name{sodi_spatialplot2}
+\alias{sodi_spatialplot2}
 \title{Plot sodi output at a fixed point in time.}
 \usage{
-  sodi_spatialplot(sodi, times)
+  sodi_spatialplot2(sodi, times)
 }
 \description{
   If there are multiple time points, facet along these
