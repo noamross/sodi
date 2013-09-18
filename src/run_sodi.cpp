@@ -90,7 +90,7 @@ List run_sodi_rcpp(DataFrame init, List parms, bool progress) {
   uword IDcount = N;
   NumericVector bbox = as<NumericVector>(parms["bbox"]);
   int dispersalfn = as<int>(parms["dispersalfn"]);
-  int seedshadow = as<int>(parms["dispersalfn"]);
+  int seedshadow = as<int>(parms["seedshadow"]);
   arma::vec seedm = as<arma::vec>(parms["seedm"]);
   arma::vec m = as<arma::vec>(parms["m"]);
   arma::vec f = as<arma::vec>(parms["f"]);
