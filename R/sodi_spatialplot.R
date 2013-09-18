@@ -3,17 +3,14 @@
 #' If there are multiple time points, facet along these
 #' @import ggplot2 data.table
 #' @export
-sodi_spatialplot = function(sodi, times, dead=FALSE) {
+sodi_spatialplot = function(sodi, times) {
   parms = attr(sodi, "parms")
-  max_infections = max(sodi$infections)  
-  
-  if(!dead) sodi = subset(sodi, alive==1)
+  max_infections = max(sodi$Infections)  
   
   matched_times = match_times(sodi, times)
   
-  #browser()
-  plot = ggplot(subset(sodi, time %in% matched_times),
-                aes(x=x, y=y, size=stage, col=infections, alpha=alive)) + 
+  plot = ggplot(subset(sodi, Time %in% matched_times),
+                aes(x=X, y=Y, size=Stage, col=Infections)) + 
            geom_point() + coord_fixed() + 
            scale_alpha(range=c(0.1,1), limits=c(0,1), breaks=NULL) +
            scale_size(range=c(2,4), limits=c(1,parms$n_stages),
@@ -23,13 +20,7 @@ sodi_spatialplot = function(sodi, times, dead=FALSE) {
                                  colours=c("#408000", "#FFCC66", "#800080"),
                                  values=c(0,1,max_infections)/max_infections)
   
-  if (length(times) > 1) plot = plot + facet_wrap(~time)
+  if (length(times) > 1) plot = plot + facet_wrap(~Time)
     
-#   ggtitle(paste0("Time = ", round(TIME, 1), 
-#                  ", Population = ", sum(subst$alive),
-#                  ", % Infected = ", round(100*sum(subst$infections > 0 & 
-#                                                 subst$alive > 0)/
-#                                             sum(subst$alive), 1), "%"))
-#  browser()
   return(plot)
 }
