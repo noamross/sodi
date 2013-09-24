@@ -1,28 +1,62 @@
 #' @export
 #' @import data.table plyr
-run_sodi <- function(parms, init=NULL, progress=FALSE) {
-  init <- if(is.null(init)) init <- initiate(parms)
+#' @importFrom plotrix listDepth
+run_sodi <- function(parms=NULL, init=NULL, reps=1, progress=FALSE, parallel=FALSE) {
+  if(listDepth(parms) > 1) {      
+    if(is.null(names(parms))) names(parms) <- 1:length(parms)
+    reps = rep(reps, length.out=length(parms))
+    parms = rep(parms, reps)
+    sodi <- alply(1:length(parms), 1, function(z) {
+      run = run_sodi_single(parms=parms[[z]], init=init, progress=FALSE)
+      run[, Parms := names(parms)[z]]
+      run[, Rep := z]
+    }, .progress = ifelse(progress, "time", "none"), .parallel=parallel)
+    sodi <- rbindlist(sodi)
+  } else {
+    sodi <- run_sodi_single(parms, init=init, progress=progress)
+  }
   
+  attr(sodi, "parms") = parms
+  attr(sodi, "reps") = reps
+
+  
+  return(sodi)
+}
+
+
+#' @import data.table plyr
+run_sodi_single <- function(parms, init, progress) {
+  
+  if(is.null(parms)) {
+    parms <- sodi::default_parms 
+  } else {
+    for(name in names(sodi::default_parms)) {
+      if(!exists(name, parms))
+      parms[[name]] <- sodi::default_parms[[name]]
+    }
+  }
+  
+  init <- if(is.null(init)) init <- initiate(parms)
+
   parms_mod <- parms
   parms_mod$timenames = as.character(parms$times)
   parms_mod <- within(parms_mod, {
          a_ply(c("f", "g", "d", "r", "alpha", "lamda",
-                 "beta", "mu", "xi", "omega", "m", "seedm"),
+                 "beta", "mu", "xi", "omega", "m", "seedm", "max_inf"),
         1, function(z) {assign(z, c(0, get(z)), envir=sys.frame(-3))})})
   sp_stages <- rep(1:length(parms$sp_stages), parms$sp_stages)
   parms_mod$ss <- c(0, rep(which(diff(c(0, sp_stages))==1), parms$sp_stages))
   
   sodi = run_sodi_rcpp(init, parms_mod, progress)
   
-  sodi = data.table(do.call(rbind,sodi))
+  sodi = data.table(rbindlist(sodi))
   
   sodi = sodi[X!=0 & Y!=0 & Stage!=0,]
   sodi[, Species := parms$sp_names[sp_stages[Stage[1]]], by=Stage]
   sodi[, Stage := Stage[1] - parms_mod$ss[Stage[1] + 1] + 1, by=Stage]
-  attr(sodi, "parms") = parms
-  
-  return(sodi)
+
 }
+
 
 initiate <- function(parms) {
   list2env(parms, environment())
