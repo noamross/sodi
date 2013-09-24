@@ -1,5 +1,5 @@
 #' Plot S and I populations of sodi output over time
-#' @import ggplot2 noamtools plyr
+#' @import ggplot2 plyr
 #' @export
 sodi_SItimepolot <- function(sodi) {
   infpop = ddply(sodi, .(Time), function(z) {
@@ -10,6 +10,6 @@ sodi_SItimepolot <- function(sodi) {
 
   plot = ggplot(infpop, aes(x=time, y=Count, fill=Infected, order=Infected)) + 
     geom_area(position="stack", stat="identity") + 
-    xlab("Time") + ylab("Population") + theme_nr
+    xlab("Time") + ylab("Population") #+ theme_nr
   return(plot)
 }

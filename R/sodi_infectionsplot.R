@@ -1,5 +1,5 @@
 #' Show the distribution of infection levels
-#' @import ggplot2 data.table noamtools plyr
+#' @import ggplot2 data.table plyr
 #' @importFrom scales rescale_none
 #' @export
 sodi_infectionsplot = function(sodi, times) {
@@ -21,7 +21,7 @@ sodi_infectionsplot = function(sodi, times) {
           geom_bar(stat="identity", position="dodge", width=1) +
           scale_x_continuous(breaks=labels_i, limits=c(-0.5,max_i + 0.5)) +
           scale_y_continuous(limits=c(0, parms$n0), oob=rescale_none) + 
-          xlab("Infections") + ylab("Count") + theme_nr
+          xlab("Infections") + ylab("Count") #+ theme_nr
     
   if (length(times) > 1) plot = plot + facet_wrap(~time)
   

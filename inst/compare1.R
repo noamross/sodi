@@ -5,18 +5,18 @@ library(plyr)
 require(ggplot2)
 
 parms1 <- list(
-  K=500,                 #Carrying capacity
-  bbox = c(0,sqrt(500),0,sqrt(500)),   #Area dimensions
-  n0 = 500,               #Initial population
+  K=1000,                 #Carrying capacity
+  bbox = c(0,sqrt(1000),0,sqrt(1000)),   #Area dimensions
+  n0 = 1000,               #Initial population
   infect0=1,             #Number of infected individuals at start
-  stages0=rep(1,500),     #Distribution of size classes
+  stages0=rep(1,1000),     #Distribution of size classes
   dispersalfn = 3,        #disease dispersal: 1-exp, 2-fattail, 3-normal,0 for no spatial component
   seedshadow = 0,          #dispersal kernel for reproduction, if 0, random location
   sp_names = c("Tanoak"),  #vector of species names
   sp_stages = c(2),        #vector of the number of size classes for each species
   m = c(1, 1),           #dispersal parameter
   seedm = c(1,1),          #dispersal parameter for reproduction
-  times = seq(0,100,1), #Times to report.  If a single number, the max time, and all events will be recorded
+  times = seq(0,250,1), #Times to report.  If a single number, the max time, and all events will be recorded
   f = c(0.01, 0.01),     #Fecundity parameter
   g = c(0.1, 0),         #Growth rates
   d = c(0.005, 0.005),   #Death rates
@@ -32,18 +32,18 @@ parms1 <- list(
 )
 
 parms2 <- list(
-  K=500,                 #Carrying capacity
-  bbox = c(0,sqrt(500),0,sqrt(500)),   #Area dimensions
-  n0 = 500,               #Initial population
+  K=1000,                 #Carrying capacity
+  bbox = c(0,sqrt(1000),0,sqrt(1000)),   #Area dimensions
+  n0 = 1000,               #Initial population
   infect0=1,             #Number of infected individuals at start
-  stages0=rep(1,500),     #Distribution of size classes
+  stages0=rep(1,1000),     #Distribution of size classes
   dispersalfn = 3,        #disease dispersal: 1-exp, 2-fattail, 3-normal,0 for no spatial component
   seedshadow = 0,          #dispersal kernel for reproduction, if 0, random location
   sp_names = c("Tanoak"),  #vector of species names
   sp_stages = c(1),        #vector of the number of size classes for each species
   m = c(1),           #dispersal parameter
   seedm = c(1),          #dispersal parameter for reproduction
-  times = seq(0,100,1), #Times to report.  If a single number, the max time, and all events will be recorded
+  times = seq(0,250,1), #Times to report.  If a single number, the max time, and all events will be recorded
   f = c(0.01),     #Fecundity parameter
   g = c(0),         #Growth rates
   d = c(0.005),   #Death rates
@@ -59,18 +59,18 @@ parms2 <- list(
 )
 
 parms3 <- list(
-  K=100,                 #Carrying capacity
-  bbox = c(0,sqrt(100),0,sqrt(100)),   #Area dimensions
-  n0 = 100,               #Initial population
+  K=1000,                 #Carrying capacity
+  bbox = c(0,sqrt(1000),0,sqrt(1000)),   #Area dimensions
+  n0 = 1000,               #Initial population
   infect0=1,             #Number of infected individuals at start
-  stages0=rep(1,100),     #Distribution of size classes
+  stages0=rep(1,1000),     #Distribution of size classes
   dispersalfn = 3,        #disease dispersal: 1-exp, 2-fattail, 3-normal,0 for no spatial component
   seedshadow = 3,          #dispersal kernel for reproduction, if 0, random location
   sp_names = c("Tanoak"),  #vector of species names
   sp_stages = c(1),        #vector of the number of size classes for each species
   m = c(1),           #dispersal parameter
   seedm = c(1),          #dispersal parameter for reproduction
-  times = seq(0,500,1), #Times to report.  If a single number, the max time, and all events will be recorded
+  times = seq(0,250,1), #Times to report.  If a single number, the max time, and all events will be recorded
   f = c(0.01),     #Fecundity parameter
   g = c(0),         #Growth rates
   d = c(0.005),   #Death rates
@@ -86,14 +86,20 @@ parms3 <- list(
 )
 
 
-runs <- run_sodi(parms = list(parms1,parms2,parms3), reps=100L, progress=TRUE)
+require(multicore)
+require(doMC)
+registerDoMC(cores=6)
+
+runs <- run_sodi(parms = list(parms1,parms2,parms3), reps=100L, progress=FALSE, parallel=TRUE)
 runsum <- runs[, list(Measure=c("Population", "Infected"),
                       Value=c(length(ID), sum(Infections >= 1))),
                by="Time,Parms,Rep"]
 runave <- runsum[, list(Value=mean(Value)), by="Time,Parms,Measure"]
 
-ggplot() + 
+plot <- ggplot() + 
   geom_line(data=runave, mapping=aes(x=Time, y=Value, col=Measure), lwd=2) + 
-  geom_line(data=runsum, mapping=aes(x=Time, y=Value, col=Measure, group=paste(Rep,Measure)), lwd=0.5, alpha=0.3) + 
+  geom_line(data=runsum, mapping=aes(x=Time, y=Value, col=Measure, group=paste(Rep,Measure)), lwd=0.2, alpha=0.3) + 
   facet_wrap(~Parms)
+
+ggsave("plot.svg", plot)
   
