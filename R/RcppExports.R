@@ -2,46 +2,6 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 #' @export
-flatdisp <- function(d, m) {
-    .Call('sodi_flatdisp', PACKAGE = 'sodi', d, m)
-}
-
-#' @export
-flatdisp2 <- function(d, m) {
-    .Call('sodi_flatdisp2', PACKAGE = 'sodi', d, m)
-}
-
-#' @export
-expdisp <- function(d, m) {
-    .Call('sodi_expdisp', PACKAGE = 'sodi', d, m)
-}
-
-#' @export
-expdisp2 <- function(d, m) {
-    .Call('sodi_expdisp2', PACKAGE = 'sodi', d, m)
-}
-
-#' @export
-normdisp <- function(d, m) {
-    .Call('sodi_normdisp', PACKAGE = 'sodi', d, m)
-}
-
-#' @export
-normdisp2 <- function(d, m) {
-    .Call('sodi_normdisp2', PACKAGE = 'sodi', d, m)
-}
-
-#' @export
-fatdisp <- function(d, m) {
-    .Call('sodi_fatdisp', PACKAGE = 'sodi', d, m)
-}
-
-#' @export
-fatdisp2 <- function(d, m) {
-    .Call('sodi_fatdisp2', PACKAGE = 'sodi', d, m)
-}
-
-#' @export
 run_sodi_rcpp <- function(init, parms, progress) {
     .Call('sodi_run_sodi_rcpp', PACKAGE = 'sodi', init, parms, progress)
 }

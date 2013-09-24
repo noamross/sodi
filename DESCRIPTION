@@ -24,3 +24,4 @@ Collate:
     'run_sodi_old.R'
     'sodi_infectiondensplot.R'
     'CSI.R'
+    'default_parms.R'
