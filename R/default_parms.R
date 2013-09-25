@@ -1,6 +1,6 @@
 #' Default sodi parameters
 #' @export
-parms1 <- list(
+default_parms <- list(
   K=500,                 #Carrying capacity
   bbox = c(0,sqrt(500),0,sqrt(500)),   #Area dimensions
   n0 = 500,               #Initial population
