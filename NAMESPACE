@@ -1,4 +1,3 @@
-export(default_parms)
 export(CSI)
 export(CSI_plot)
 export(CSI_step)

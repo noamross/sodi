@@ -10,16 +10,11 @@ using namespace Rcpp;
 List run_sodi_rcpp(DataFrame init, List parms, bool progress);
 RcppExport SEXP sodi_run_sodi_rcpp(SEXP initSEXP, SEXP parmsSEXP, SEXP progressSEXP) {
 BEGIN_RCPP
-    SEXP __sexp_result;
-    {
-        Rcpp::RNGScope __rngScope;
-        DataFrame init = Rcpp::as<DataFrame >(initSEXP);
-        List parms = Rcpp::as<List >(parmsSEXP);
-        bool progress = Rcpp::as<bool >(progressSEXP);
-        List __result = run_sodi_rcpp(init, parms, progress);
-        PROTECT(__sexp_result = Rcpp::wrap(__result));
-    }
-    UNPROTECT(1);
-    return __sexp_result;
+    Rcpp::RNGScope __rngScope;
+    DataFrame init = Rcpp::as<DataFrame >(initSEXP);
+    List parms = Rcpp::as<List >(parmsSEXP);
+    bool progress = Rcpp::as<bool >(progressSEXP);
+    List __result = run_sodi_rcpp(init, parms, progress);
+    return Rcpp::wrap(__result);
 END_RCPP
 }
