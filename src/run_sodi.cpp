@@ -91,7 +91,7 @@ double beta_lin(double beta, int i, int max_inf)  {
 //' @export
 // [[Rcpp::export]]
 List run_sodi_rcpp(DataFrame init, List parms, bool progress) {
-  ProfilerStart("/Users/noamross/Dropbox/Workspace/run_sodi.prof");
+  ProfilerStart("~/code/sodi/run_sodi.prof");
   //Unpack the parameters
 
   int K = as<int>(parms["K"]);
