@@ -1,6 +1,6 @@
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadilloExtensions/sample.h>
-#include <gperftools/profiler.h>
+//#include <gperftools/profiler.h>
 using namespace Rcpp;
 using namespace arma;
 using namespace std;
@@ -91,7 +91,7 @@ double beta_lin(double beta, int i, int max_inf)  {
 //' @export
 // [[Rcpp::export]]
 List run_sodi_rcpp(DataFrame init, List parms, bool progress) {
-  ProfilerStart("~/code/sodi/run_sodi.prof");
+  //ProfilerStart("~/code/sodi/run_sodi.prof");
   //Unpack the parameters
 
   int K = as<int>(parms["K"]);
@@ -327,7 +327,7 @@ List run_sodi_rcpp(DataFrame init, List parms, bool progress) {
   F = as<arma::vec>(wrap(pmax(0, as<NumericVector>(wrap(F)))));
   
   }
-  ProfilerStop();
+  //ProfilerStop();
   return sodi;
 
 }
