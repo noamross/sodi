@@ -1,125 +1,57 @@
+#define PROFILE 0
+#define PROFILE_FILE "~/out.prof"
+
+#if PROFILE
+#include <gperftools/profiler.h>
+#endif
+
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadilloExtensions/sample.h>
-//#include <gperftools/profiler.h>
+
 using namespace Rcpp;
 using namespace arma;
 using namespace std;
 
-//The dispersal functions. 
 
-arma::vec flatdisp(arma::vec d, arma::vec m) {
-  return m;
-}
-
-arma::vec flatdisp2(arma::vec d, double m) {
-  d.fill(m);
-  return d;
-}
-
-arma::vec expdisp(arma::vec d, arma::vec m) {
-  return (square(m) / (2*M_PI)) % exp(-m % d);
-}
-
-arma::vec expdisp2(arma::vec d, double m) {
-  return (m*m / (2*M_PI)) * exp(-m * d);
-}
-
-arma::vec normdisp(arma::vec d, arma::vec m) {
-  return (square(m) / sqrt(2*M_PI)) % exp(-0.5 * square(m % d));
-}
-
-arma::vec normdisp2(arma::vec d, double m) {
-  return (m*m / sqrt(2*M_PI)) * exp(-0.5 * square(m * d));
-}
-
-arma::vec fatdisp(arma::vec d, arma::vec m) {
-  return (square(m) / (24* M_PI)) % exp(- sqrt(m % d));
-}
-
-arma::vec fatdisp2(arma::vec d, double m) {
-  return (m*m / (24* M_PI)) * exp(- sqrt(m * d));
-}
-
-
-//Distance calculation.  Returns vector of Euclidian distances from element j
-arma::vec distance(arma::vec X, arma::vec Y, int j) {
-  return sqrt(square(X - X(j)) + square(Y - Y(j)));
-}
-
-//Vectorized power calculation
-arma::vec powvec(arma::vec A, arma::ivec p) {
-  uword n = A.n_elem;
-  arma::vec B(n);
-  for(uword i = 0; i < n; ++i) {
-    B(i) = pow(A(i), p(i));
-  }
-  return B;
-}
-
-//Random number generators
-double rnorm1(double p) {
-  return as<double>(rnorm(1, 0, p));
-}
-
-double rexp1(double p) {
-  return as<double>(rexp(1, p));
-}
-
-
-//Functions to determine infection probability based on infection number
-double beta_flat(double beta, int i, int max_inf) {
-  return beta;
-}
-
-double beta_step(double beta, int i, int max_inf) {
-  if(i >= max_inf) {
-    return 0;
-  } else {
-    return beta;
-  }
-}
-  
-double beta_lin(double beta, int i, int max_inf)  {
-  if(i >= max_inf) {
-    return 0;
-  } else {
-    return beta * (1 - i / max_inf);
-  }
-}
-
+#include "data_structures.cpp"
+#include "dispersal_functions"
+#include "updating_functions"
+#include "infection_density_dependence"
 
 //' @export
 // [[Rcpp::export]]
-List run_sodi_rcpp(DataFrame init, List parms, bool progress) {
-  //ProfilerStart("run_sodi.prof");
-  //Unpack the parameters
+int run_sodi_rcpp(DataFrame init, List parms, bool progress) {
+  
+  #if PROFILE
+  ProfilerStart(PROFILE_FILE);
+  #endif
+  
+  //populate the parameter structure from the input list
+  parmlist parms;
+  parms.K = as<int>(parms["K"]);
+  parms.N = as<int>(parms["n0"]);
+  parm.bbox = as<NumericVector>(parms["bbox"]);
+  parms.seedm = as<arma::vec>(parms["seedm"]);
+  parms.m = as<arma::vec>(parms["m"]);
+  parms.f = as<arma::vec>(parms["f"]);
+  parms.g = as<arma::vec>(parms["g"]);
+  parms.d = as<arma::vec>(parms["d"]);
+  parms.r = as<arma::vec>(parms["r"]);
+  parms.alpha = as<arma::vec>(parms["alpha"]);
+  parms.lamda = as<arma::vec>(parms["lamda"]);
+  parms.beta = as<arma::vec>(parms["beta"]);
+  parms.mu = as<arma::vec>(parms["mu"]);
+  parms.xi = as<arma::vec>(parms["xi"]);
+  parms.omega = as<arma::vec>(parms["omega"]);
+  parms.ss = as<arma::uvec>(parms["ss"]);
+  parms.max_inf = as<arma::ivec>(parms["max_inf"]);
 
-  int K = as<int>(parms["K"]);
-  int N = as<int>(parms["n0"]);
-  NumericVector bbox = as<NumericVector>(parms["bbox"]);
 
-  //stage-specific parameters
-  arma::vec seedm = as<arma::vec>(parms["seedm"]);
-  arma::vec m = as<arma::vec>(parms["m"]);
-  arma::vec f = as<arma::vec>(parms["f"]);
-  arma::vec g = as<arma::vec>(parms["g"]);
-  arma::vec d = as<arma::vec>(parms["d"]);
-  arma::vec r = as<arma::vec>(parms["r"]);
-  arma::vec alpha = as<arma::vec>(parms["alpha"]);
-  arma::vec lamda = as<arma::vec>(parms["lamda"]);
-  arma::vec beta = as<arma::vec>(parms["beta"]);
-  arma::vec mu = as<arma::vec>(parms["mu"]);
-  arma::vec xi = as<arma::vec>(parms["xi"]);
-  arma::vec omega = as<arma::vec>(parms["omega"]);
-  arma::uvec ss = as<arma::uvec>(parms["ss"]);
-  arma::ivec max_inf = as<arma::ivec>(parms["max_inf"]);
-
-  //Options to select functions for dispersal and infection
+  //define functions based on options
   int dispersalfn = as<int>(parms["dispersalfn"]);
   int seedshadow = as<int>(parms["seedshadow"]);
   int beta_meth = as<int>(parms["beta_meth"]);
   
-  //define functions based on options
   arma::vec (*kernel)(arma::vec d, arma::vec m);
   arma::vec (*kernel2)(arma::vec d, double m);
   if(dispersalfn == 0) {
@@ -137,13 +69,14 @@ List run_sodi_rcpp(DataFrame init, List parms, bool progress) {
     kernel2 = normdisp2;
   }
   
-  double (*seedkern)(double p);
+  arma::vec (*seedkern)(double x, double y, int s, parmlist parms);
+  if(seedshadow == 0) {
+    seedkern = flatseed;
   if(seedshadow == 1) {
-    seedkern = rexp1;
+    seedkern = expseed;;
   } else if(seedshadow == 3) {
-    seedkern = rnorm1;
+    seedkern = normseed;
   }
-  double seeddist;
   
   double (*beta_f)(double beta, int i, int max_inf);
   if (beta_meth == 0) {
@@ -155,180 +88,128 @@ List run_sodi_rcpp(DataFrame init, List parms, bool progress) {
   }
 
   //Bookkeeping values
-  uword treeindex = N - 1;
-  uword treecount = N;
-  uword IDcount = N;
+	statelist state;
+	state.treecount = parms.N;
+  state.treeindex = parms.N - 1;
+  state.IDcount = parms.N;
+  state.ID = as<arma::uvec>(init["ID"]);
+  state.X = as<arma::vec>(init["X"]);
+  state.Y = as<arma::vec>(init["Y"]);
+  state.S = as<arma::uvec>(init["Stage"]);
+  state.I = as<arma::ivec>(init["Infections"]);
+  state.F.zeros(K);
+  state.B.zeros(K);
+  state.time = times(0);
+  
+  for(uword k = 0; k < state.treecount; k++) {
+    state.B(k) = beta_f(parms.beta(state.S(k)), state.I(k), parms.max_inf(state.S(k)));
+    state.F(k) = sum(kernel(distance(state.X, state.Y, k), parms.m(state.S)) % state.I % parms.lamda(state.S)) * state.B(k);
+  }
+  
+  state.E = fmax(0, 1 - sum(parms.omega(state.S)) / parms.K);
+  arma::mat R(parms.K, 6);
+  R.col(1) = state.E * parms.f(state.S);
+  R.col(2) = parms.d(state.S) + state.I % alpha(state.S) % (1 - parms.r(state.S));
+  R.col(3) = parms.g(state.S);
+  R.col(4) = state.F;
+  R.col(5) = state.I % parms.mu(state.S);
+  R.col(6) = state.I % alpha(state.S) % parms.r(state.S));
+  
+  
   NumericVector times = as<NumericVector>(parms["times"]);
   CharacterVector timenames = as<CharacterVector>(parms["timenames"]);
-  double time = times(0);
+  
   double time_max = times(times.length() - 1);
   NumericVector::iterator next_record = times.begin();
   CharacterVector::iterator next_timename = timenames.begin();
-  arma::vec T(K);
-  T.fill(time);
-  IntegerVector Index = seq_len(K) - 1;
-  IntegerVector actions = seq_len(6);
-  int action;
-  arma::rowvec status;
+
   
   //Interim values
   RNGScope scope;
-  double E;
   uword s;
   int i;
   int j;
+  int action;
   double theta;
   
   
   //Assign columns of the data frame to vectors of state value
-  arma::uvec ID = as<arma::uvec>(init["ID"]);
-  arma::vec X = as<arma::vec>(init["X"]);
-  arma::vec Y = as<arma::vec>(init["Y"]);
-  arma::uvec S = as<arma::uvec>(init["Stage"]);
-  arma::ivec I = as<arma::ivec>(init["Infections"]);
-  
-  //Intermediate state values 
-  arma::vec irates(K);
-  arma::vec F(K);
-  arma::vec beta_i(K);
-  irates.fill(0);
-  F.fill(0);
-  beta_i.fill(0);
 
-  for(uword k = 0; k < treecount; k++) {
-      beta_i(k) = beta_f(beta(S(k)), I(k), max_inf(S(k)));
-      F(k) = sum(kernel(distance(X, Y, k), m(S)) % I % lamda(S)) * beta_i(k);
-  }
-  
+
+
 
   //Initiate datafrae
-  init = Rcpp::DataFrame::create(Named("Time", T), init,  Named("Force", F));
-  List sodi = List::create(Named("0", init));
-
 
   //Initiate iterators
   ++next_record;
   ++next_timename;
-  
+
+  mat printmatrix(K,6);  
+  ofstream outfile;
+  outfile.open(filename, ios::out | ios::app);
 //Start the loop
   while (time < time_max) {
  
     //Record when we pass a value in the times vector
     if (time > *next_record) {
-      sodi.push_back(Rcpp::DataFrame::create(_["Time"]=wrap(T.fill(*next_record)),
-                                             _["ID"]=wrap(ID),
-                                             _["X"]=wrap(X),
-                                             _["Y"]=wrap(Y),
-                                             _["Stage"]=wrap(S),
-                                             _["Infections"]=wrap(I),
-                                             //_["Beta"]=beta_i,
-                                             _["Force"]=wrap(F)));
+      print_state(*next_record, state, outfile, printmatrix)
+      void print_state(double outtime, statelist &state, ofstream &outfile, mat &printmatrix) {
+        printmartix.col(0) = outtime;
+        printmatrix.col(1) = state.ID;
+        printmatrix.col(2) = state.X;
+        printmatrix.col(3) = state.Y;
+        printmatrix.col(4) = state.S;
+        printmatrix.col(5) = state.I;
+        printmatrix(span(0, state.treeindex), span(0, 5)).save(outfile, csv_ascii);
+      }  
+      
       ++next_record;
       ++next_timename;
-      if (progress) {
-        Rf_PrintValue(wrap(time/time_max));
+
       }
-    }
 
     //Calculate individual-level event rates and next time step.
-    double E = fmax(0, 1 - sum(omega(S)) / K);
-    irates = E * f(S) % powvec(xi(S), I) + d(S) + g(S) + F + I % mu(S) + I % alpha(S);
-    time = time + as<double>(rexp(1, sum(irates)));
+    
+    time = time + as<double>(rexp(1, accu(R)));
     //T.fill(time);
     
     
     //Select the individual that will change this time step
-    uword j = as<uword>(Rcpp::RcppArmadillo::sample(Index, 1, false, as<NumericVector>(wrap(irates))));
-    s = S(j);
-    i = I(j);
+    j = as<uword>(Rcpp::RcppArmadillo::sample(Index, 1, false, as<NumericVector>(wrap(sum(state.R, dim=1)))));
+    action = as<int>(Rcpp::RcppArmadillo::sample(actions, 1, false, as<NumericVector(wrap(state.R.row(j)))));
+    s = state.S(j);
+    i = state.I(j);
 
-    //Calcualate the probabilities of different events for the individual
-    NumericVector possibs = NumericVector::create(
-      E * f(s) * pow(xi(s), i), //1. reproduce
-      d(s) + i * alpha(s) * (1 - r(s)), //2. die/succumb
-      g(s), //3. grow
-      F(j), //4. sicken
-      i * mu(s), //5. recover
-      i * alpha(s) * r(s)  //6. succumb + resprout
-    );
-    
-    
-    //Determine the event
-    action = as<int>(Rcpp::RcppArmadillo::sample(actions, 1, false, possibs));
-   // status << j << action << S(j) << I(j) << beta_i(j) << F(j);
-   // Rf_PrintValue(wrap(status));
-
-    
-    switch (action) {
-    case 1: //reproduce, create a new tree
-      IDcount += 1;
-      ID(treecount) = IDcount;
-      if (seedshadow == 0) {
-        X(treecount) = as<double>(runif(1, bbox(0), bbox(1)));
-        Y(treecount) = as<double>(runif(1, bbox(2), bbox(3)));
-      } else if(seedshadow > 0) {
-        theta = as<double>(runif(1, 0, 2*M_PI));
-        seeddist = seedkern(seedm(s));
-        X(treecount) = X(j) + cos(theta) * seeddist;
-        Y(treecount) = Y(j) + sin(theta) * seeddist;
-      }
-      S(treecount) = ss(s);
-      I(treecount) = 0;
-      beta_i(treecount) = beta(s);
-      F(treecount) = sum(kernel(distance(X, Y, treecount), m(S)) % I % lamda(S)) * beta_i(treecount);
-      treecount += 1;
-      treeindex += 1;
+    switch (action) {  
+    case 1: 
+      reproduce(&state, &parms, &R, j, s, state.treecount);
       break; 
-    case 2: //die
-       F -= kernel2(distance(X, Y, j), m(s)) % beta_i * i * lamda(s);
-       ID(j) = ID(treeindex);
-       X(j) = X(treeindex);
-       Y(j) = Y(treeindex);
-       S(j) = S(treeindex);
-       I(j) = I(treeindex);
-       beta_i(j) = beta_i(treeindex);
-       F(j) = F(treeindex);
-       ID(treeindex) = 0;
-       X(treeindex) = 0;
-       Y(treeindex) = 0;
-       S(treeindex) = 0;
-       I(treeindex) = 0;
-       beta_i(j) = 0;
-       F(treeindex) = 0;
-       treecount -= 1;
-       treeindex -= 1;
-       break;
+    case 2:
+    die(&state, &parms, &R, j, s, state.treeindex);
+    break;
     case 3: //grow
-       S(j) += 1;
-       beta_i(j) = beta_f(beta(S(j)), i, max_inf(S(j)));
-       F(j) = F(j) * beta(S(j))/beta(s);
-       F += kernel2(distance(X, Y, j), m(S(j))) % beta_i * i * (lamda(S(j)) - lamda(s));
+       grow(&state, &parms, &R, j, s, i);
        break;
     case 4: //sicken
-       I(j) += 1;
-       F += kernel2(distance(X, Y, j), m(s)) % beta_i * lamda(s);
-       beta_i(j) = beta_f(beta(s), I(j), max_inf(s));
-       F(j) = F(j) * beta_i(j) / beta_f(beta(s), i, max_inf(s));
+       sicken(&state, &parms, &R, j, s, i);
        break;
+
     case 5: //recover
-       I(j) -= 1;
-       F -= kernel2(distance(X, Y, j), m(s)) % beta_i * lamda(s);
-       beta_i(j) = beta_f(beta(s), I(j), max_inf(s));
-       F(j) = sum(kernel(distance(X, Y, j), m(S)) % I % lamda(S)) * beta_i(j);
+       recover(&state, &parms, &R, j, s, i);
        break;
     case 6: //resprout
-       S(j) = ss(s);  //Set the stage back to the "base stage" for the species
-       I(j) = 0;
-       beta_i(j) = beta((S(j)));
-       F -= kernel2(distance(X, Y, j), m(s)) % beta_i * i * lamda(s);
-       F(j) = sum(kernel(distance(X, Y, j), m(S)) % I % lamda(S)) * beta_i(j) ;
+       resprout(&state, &parms, &R, j, s, i);
+       break;
     }
 
   F = as<arma::vec>(wrap(pmax(0, as<NumericVector>(wrap(F)))));
   
   }
-  //ProfilerStop();
-  return sodi;
-
+  
+  #if PROFILE
+  ProfilerStop();
+  #endif
+  outfile.close();
+  return 1;
 }
 
