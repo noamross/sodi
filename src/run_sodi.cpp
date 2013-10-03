@@ -7,8 +7,8 @@
 
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadilloExtensions/sample.h>
-#include <iostream>
 #include <fstream>
+#include <string>
 #include "data_structures.h"
 #include "dispersal_functions.h"
 #include "infection_density_dependence.h"
@@ -35,7 +35,7 @@ int run_sodi_rcpp(DataFrame init, List parm, bool progress, CharacterVector file
   ProfilerStart(PROFILE_FILE);
   #endif
   
-  const char * filename = file(0);
+  std::string filename = Rcpp::as<std::string>(file);
   
   //populate the parameter structure from the input list
   parmlist parms;
@@ -134,8 +134,10 @@ int run_sodi_rcpp(DataFrame init, List parm, bool progress, CharacterVector file
   int action;
   
   arma::mat printmatrix(parms.K,6);  
-  ofstream outfile;
-  outfile.open(filename, ios::out | ios::app);
+  std::ofstream outfile;
+  outfile.open(filename.c_str(), ios::out | ios::app);
+
+  ++next_record;
 
 //Start the loop
   while (state.time < time_max) {

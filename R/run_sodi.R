@@ -1,19 +1,37 @@
 #' @export
 #' @import data.table plyr
 #' @importFrom plotrix listDepth
-run_sodi <- function(parms=NULL, init=NULL, reps=1, progress=FALSE, parallel=FALSE) {
+run_sodi <- function(parms=NULL, init=NULL, reps=1, progress=FALSE, parallel=FALSE, file=NULL, load=TRUE) {
+  if(is.null(file) & load==TRUE) { 
+    fname = file.path(tempdir(), "sodi")
+  } else if(is.null(file) & load==FALSE) {
+    fname = "sodi"
+  } else {
+    fname = file
+  }
+  fname = paste0(fname, format(Sys.time(), "%y-%m-%d-%H%M"))
+  saveRDS(parms, paste0(fname, ".parmslist.rds"))
   if(listDepth(parms) > 1) {      
     if(is.null(names(parms))) names(parms) <- 1:length(parms)
     reps = rep(reps, length.out=length(parms))
     parms = rep(parms, reps)
-    sodi <- alply(1:length(parms), 1, function(z) {
-      run = run_sodi_single(parms=parms[[z]], init=init, progress=FALSE)
-      run[, Parms := names(parms)[z]]
-      run[, Rep := z]
+    fnames = paste0(fname,".", names(parms), ".", 1:length(parms))
+    a_ply(1:length(parms), 1, function(z) {
+      run_sodi_single(parms=parms[[z]], init=init, progress=FALSE,
+                      filename=fnames[z])
     }, .progress = ifelse(progress, "time", "none"), .parallel=parallel)
-    sodi <- rbindlist(sodi)
+                    
+    if(load) {
+      sodi <- load_sodi_files(fname=fname)
+    } else {
+      sodi <- data.frame(file=fnames, run=names(parms));
+    }
+      
   } else {
-    sodi <- run_sodi_single(parms, init=init, progress=progress)
+    run_sodi_single(parms, init=init, progress=progress, filename=name)
+    if(load) {
+      sodi <- load_sodi_files(fname=fname)
+    }
   }
   
   attr(sodi, "parms") = parms
@@ -23,9 +41,32 @@ run_sodi <- function(parms=NULL, init=NULL, reps=1, progress=FALSE, parallel=FAL
   return(sodi)
 }
 
-
+#' @import stringr
+#' @importFrom Hmisc escapeRegex
+load_sodi_files <- function(fname, path=".") {
+  filenames = list.files(pattern=paste0(escapeRegex(fname), ".*$"), path=path)
+  if(length(filenames) <= 2) {
+    sodi <- fread(fname)
+    parms <- readRDS(paste0(fname,".parmslist.rds"))
+    attr(sodi, "parms") <- parms
+    return(sodi)
+  }
+  matches <- str_match(filenames, ".(\\w+).(\\d)$")
+  matches <- matches[complete.cases(matches),]
+  parms = matches[,2]
+  runs = as.numeric(matches[,3])
+  sodi <- alply(1:length(filenames), function(z) {
+    data <- fread(filenames[z])
+    data[, Parms := parms[z]]
+    data[, Rep := runs[z]]
+  })
+  sodi <- rbindlist(sodi)
+  attr(sodi, "parms") <- readRDS(paste0(fname, ".parms.rds"))
+  return(sodi)
+}
+    
 #' @import data.table plyr
-run_sodi_single <- function(parms, init, progress) {
+run_sodi_single <- function(parms, init, progress , filename) {
   
   if(is.null(parms)) {
     parms <- sodi::default_parms 
@@ -47,7 +88,7 @@ run_sodi_single <- function(parms, init, progress) {
   sp_stages <- rep(1:length(parms$sp_stages), parms$sp_stages)
   parms_mod$ss <- c(0, rep(which(diff(c(0, sp_stages))==1), parms$sp_stages))
   
-  sodi = run_sodi_rcpp(init, parms_mod, progress)
+  sodi = run_sodi_rcpp(init, parms_mod, progress, filename)
   
   sodi = data.table(rbindlist(sodi))
   
@@ -68,3 +109,4 @@ initiate <- function(parms) {
                     )
   return(init)
 }
+  

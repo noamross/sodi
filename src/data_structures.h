@@ -21,9 +21,7 @@ struct parmlist {
     arma::vec omega;
     arma::uvec ss;
     arma::ivec max_inf;
-    
-  public:
-};
+    };
 
 struct statelist {
     arma::uvec ID;

@@ -3,6 +3,13 @@
 #define RUNSODI
 
 #include <RcppArmadillo.h>
+#include <fstream>
+#include <string>
+#include "data_structures.h"
+#include "dispersal_functions.h"
+#include "infection_density_dependence.h"
+#include "updating_functions.h"
+#include "print_state.h"
 #include "data_structures.h"
 
 extern int run_sodi_rcpp(Rcpp::DataFrame init, Rcpp::List parm, bool progress, Rcpp::CharacterVector file);
