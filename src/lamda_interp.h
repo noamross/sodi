@@ -4,5 +4,5 @@
 #include "data_structures.h"
 
 
-extern void print_state(statelist &state, std::ofstream &outfile, arma::mat &printmatrix);
+double lamda_interp(statelist &state, parmlist &parms);
 

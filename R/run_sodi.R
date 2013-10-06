@@ -1,70 +1,101 @@
 #' @export
 #' @import data.table plyr
 #' @importFrom plotrix listDepth
-run_sodi <- function(parms=NULL, init=NULL, reps=1, progress=FALSE, parallel=FALSE, file=NULL, load=TRUE) {
-  if(is.null(file) & load==TRUE) { 
-    fname = file.path(tempdir(), "sodi")
-  } else if(is.null(file) & load==FALSE) {
-    fname = "sodi"
+run_sodi <- function(parms=NULL, init=NULL, reps=1, progress=FALSE, parallel=FALSE, name=NULL, load=TRUE, append_date=TRUE) {
+  START = Sys.time()
+  wd = getwd()
+  if (is.null(name)) {
+    fname="sodi"
   } else {
-    fname = file
+    fname=name
   }
-  fname = paste0(fname, format(Sys.time(), "%y-%m-%d-%H%M"))
-  saveRDS(parms, paste0(fname, ".parmslist.rds"))
-  if(listDepth(parms) > 1) {      
+  if (append_date==TRUE) fname = paste0(fname, format(Sys.time(), "-%y-%m-%d-%H%M%S"))
+  if (is.null(name) & load==TRUE) {
+    dir = file.path(tempdir(), fname) 
+  } else {
+    dir = file.path(wd, fname)
+  }
+  dir.create(dir)
+  setwd(dir)
+  if(listDepth(parms) > 1 || reps > 1) {
+    if(listDepth(parms) == 1) parms=list(parms)
     if(is.null(names(parms))) names(parms) <- 1:length(parms)
     reps = rep(reps, length.out=length(parms))
     parms = rep(parms, reps)
-    fnames = paste0(fname,".", names(parms), ".", 1:length(parms))
+    dfnames = paste0(fname,".", names(parms), ".", 1:length(parms), ".csv")
+    dpnames = paste0(fname,".", names(parms), ".", 1:length(parms), ".parms.rds")
     a_ply(1:length(parms), 1, function(z) {
+      saveRDS(parms[[z]], dpnames[[z]])
       run_sodi_single(parms=parms[[z]], init=init, progress=FALSE,
-                      filename=fnames[z])
+                      filename=dfnames[z])
     }, .progress = ifelse(progress, "time", "none"), .parallel=parallel)
-                    
-    if(load) {
-      sodi <- load_sodi_files(fname=fname)
-    } else {
-      sodi <- data.frame(file=fnames, run=names(parms));
-    }
-      
   } else {
-    run_sodi_single(parms, init=init, progress=progress, filename=name)
-    if(load) {
-      sodi <- load_sodi_files(fname=fname)
-    }
+    saveRDS(parms, paste0(fname, ".parms.rds"))
+    run_sodi_single(parms, init=init, progress=progress, filename=paste0(fname, ".csv"))
+  }  
+  if(load) {
+    sodi <- load_sodi_files(dir = dir, name=fname)
   }
-  
-  attr(sodi, "parms") = parms
-  attr(sodi, "reps") = reps
-
-  
+  setwd(wd)
+  END = Sys.time()
+  if(progress) cat("\nCompleted in:", END-START, "s\n")
   return(sodi)
 }
 
+#' @export
 #' @import stringr
 #' @importFrom Hmisc escapeRegex
-load_sodi_files <- function(fname, path=".") {
-  filenames = list.files(pattern=paste0(escapeRegex(fname), ".*$"), path=path)
-  if(length(filenames) <= 2) {
-    sodi <- fread(fname)
-    parms <- readRDS(paste0(fname,".parmslist.rds"))
-    attr(sodi, "parms") <- parms
-    return(sodi)
+load_sodi_files <- function(dir=dir, name=basename(dir)) {
+  wd = getwd()
+  setwd(dir)
+  filenames = list.files(pattern=paste0(escapeRegex(name), ".*$"))
+  dmatches <- str_match(filenames, "^([^\\.]*\\.?(\\w*)\\.?(\\d*))\\.csv$")
+  dmatches = dmatches[complete.cases(dmatches),]
+  pmatches <- str_match(filenames, "^(.*)\\.parms\\.rds$")
+  pmatches = pmatches[complete.cases(pmatches),]
+  if(!is.matrix(dmatches)) dmatches <- matrix(dmatches, nrow=1)
+  if(!is.matrix(pmatches)) dmatches <- matrix(pmatches, nrow=1)
+  sodi <- alply(dmatches[,2], 1, function(z) load_sodi_file_single(z, runs=(nrow(dmatches)!=1)))
+  if(length(sodi)==1) {
+    sodi = sodi[[1]]
+    class(sodi) <- c(class(sodi), "sodi")
+  } else {
+    parmlist = llply(sodi, function(z) attr(z, "parms"))
+    names(parmlist) = dmatches[,3]
+    sodi <- rbindlist(sodi)
+    attr(sodi, "parms") = parmlist[-which(duplicated(dmatches[,3]))]
+    attr(sodi, "reps") = table(dmatches[,3])
+    class(sodi) <- c(class(sodi), "sodi", "multisodi")
+
   }
-  matches <- str_match(filenames, ".(\\w+).(\\d)$")
-  matches <- matches[complete.cases(matches),]
-  parms = matches[,2]
-  runs = as.numeric(matches[,3])
-  sodi <- alply(1:length(filenames), function(z) {
-    data <- fread(filenames[z])
-    data[, Parms := parms[z]]
-    data[, Rep := runs[z]]
-  })
-  sodi <- rbindlist(sodi)
-  attr(sodi, "parms") <- readRDS(paste0(fname, ".parms.rds"))
+  setwd(wd)
   return(sodi)
 }
-    
+
+
+load_sodi_file_single <- function(name, runs=TRUE) {
+  dfile = list.files(pattern=paste0("^", escapeRegex(name),  "\\.csv$"))
+  pfile = list.files(pattern=paste0("^", escapeRegex(name),  "\\.parms\\.rds$"))
+  if(length(dfile) > 1 || length(pfile) > 1) stop("Ambiguous filenames")
+  colclasses=c("numeric", "integer", "numeric", "numeric", "integer", "integer")
+  colnames=c("Time", "ID", "X", "Y", "Stage", "Infections")
+  sodi <- fread(dfile, colClasses=colclasses)
+  setnames(sodi, colnames)
+  parms <- readRDS(pfile)
+  sp = rep(1:length(parms$sp_stages), parms$sp_stages)
+  ss = c(0, rep(which(diff(c(0, sp))==1), parms$sp_stages))
+  sodi[, Species := parms$sp_names[sp[Stage[1]]], by=Stage]
+  sodi[, Stage := Stage[1] - ss[Stage[1] + 1] + 1, by=Stage]
+  if(runs) {
+    match = str_match(name, "^.+\\.(\\w+)\\.(\\d+)$")
+    sodi[, Parms := match[2]]
+    sodi[, Run := as.numeric(match[3])]
+  }
+  attr(sodi, "parms") <- parms
+  return(sodi)
+}
+
+  
 #' @import data.table plyr
 run_sodi_single <- function(parms, init, progress , filename) {
   
@@ -88,14 +119,7 @@ run_sodi_single <- function(parms, init, progress , filename) {
   sp_stages <- rep(1:length(parms$sp_stages), parms$sp_stages)
   parms_mod$ss <- c(0, rep(which(diff(c(0, sp_stages))==1), parms$sp_stages))
   
-  sodi = run_sodi_rcpp(init, parms_mod, progress, filename)
-  
-  sodi = data.table(rbindlist(sodi))
-  
-  sodi = sodi[X!=0 & Y!=0 & Stage!=0,]
-  sodi[, Species := parms$sp_names[sp_stages[Stage[1]]], by=Stage]
-  sodi[, Stage := Stage[1] - parms_mod$ss[Stage[1] + 1] + 1, by=Stage]
-
+  run_sodi_rcpp(init, parms_mod, progress, filename)
 }
 
 

@@ -21,6 +21,9 @@ struct parmlist {
     arma::vec omega;
     arma::uvec ss;
     arma::ivec max_inf;
+    arma::vec lamda_ex;
+    arma::vec times;
+    
     };
 
 struct statelist {
@@ -37,6 +40,7 @@ struct statelist {
     arma::uword treecount;  
     arma::uword treeindex;
     double E;
+    arma::vec::iterator next_record;
 };
 
 

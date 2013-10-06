@@ -2,8 +2,8 @@
 #include <RcppArmadillo.h>
 #include "data_structures.h"
 
-void print_state(double outtime, statelist &state, std::ofstream outfile, arma::mat &printmatrix) {
-  printmatrix.col(0).fill(outtime);
+void print_state(statelist &state, std::ofstream &outfile, arma::mat &printmatrix) {
+  printmatrix.col(0).fill(*(state.next_record));
   printmatrix.col(1) = arma::conv_to<arma::vec>::from(state.ID);
   printmatrix.col(2) = state.X;
   printmatrix.col(3) = state.Y;

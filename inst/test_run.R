@@ -1,20 +1,23 @@
 #install.packages("~/Dropbox/code/sodi/", type="source", repos=NULL)
 library(sodi)
-library(manipulate)
+library(multicore)
+library(doMC)
+##registerDoMC(cores=2)
 
 parms <- list(
-  K=500,                 #Carrying capacity
-  bbox = c(0,sqrt(500),0,sqrt(500)),   #Area dimensions
-  n0 = 500,               #Initial population
+  K=100,                 #Carrying capacity
+  bbox = c(0,sqrt(100),0,sqrt(100)),   #Area dimensions
+  n0 = 100,               #Initial population
   infect0=1,             #Number of infected individuals at start
-  stages0=rep(1,500),     #Distribution of size classes
+  stages0=rep(1,100),     #Distribution of size classes
   dispersalfn = 3,        #disease dispersal: 1-exp, 2-fattail, 3-normal,0 for no spatial component
   seedshadow = 0,          #dispersal kernel for reproduction, if 0, random location
   sp_names = c("Tanoak"),  #vector of species names
   sp_stages = c(2),        #vector of the number of size classes for each species
   m = c(1, 1),           #dispersal parameter
   seedm = c(1,1),          #dispersal parameter for reproduction
-  times = seq(0,100,1), #Times to report.  If a single number, the max time, and all events will be recorded
+  times = seq(0,100,1),  #Times to report.  If a single number, the max time, and all events will be recorded
+  lamda_ex = seq(0, 100, 1), #Sequence of external force of infection.  Must be same length as times to report.
   f = c(0.01, 0.01),     #Fecundity parameter
   g = c(0.1, 0),         #Growth rates
   d = c(0.005, 0.005),   #Death rates
@@ -29,8 +32,16 @@ parms <- list(
   beta_meth = 0 #Maximum infection method.  Zero for none, 1 for step function, 2 for decreasing probability
 )
 
-sodi = run_sodi(parms, progress=TRUE)
+
+START=Sys.time()
+sodi <-run_sodi(parms, name="test", progress=TRUE, parallel=FALSE)
+aveRDS(sodi, "multitest")
+STOP=Sys.time()
+STOP-START
+
 max(sodi$Infections)
+
+library(manipulate)
 manipulate(sodi_spatialplot(sodi, TIME), TIME = slider(0, tail(parms$times, 1), step=1))
 manipulate(sodi_infectionsplot(sodi, TIME), TIME=slider(0,tail(parms$times,1),1, step=1))
 manipulate(sodi_infectionsdensplot(sodi, TIME), TIME=slider(0,tail(parms$times,1),1, step=1))

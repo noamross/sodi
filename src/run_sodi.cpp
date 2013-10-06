@@ -15,6 +15,7 @@
 #include "updating_functions.h"
 #include "print_state.h"
 #include "run_sodi.h"
+#include "lamda_interp.h"
 
 using namespace Rcpp;
 using namespace arma;
@@ -56,11 +57,10 @@ int run_sodi_rcpp(DataFrame init, List parm, bool progress, CharacterVector file
   parms.omega = as<arma::vec>(parm["omega"]);
   parms.ss = as<arma::uvec>(parm["ss"]);
   parms.max_inf = as<arma::ivec>(parm["max_inf"]);
-
-  NumericVector times = as<NumericVector>(parm["times"]);
-  double time_max = times(times.length() - 1);
-  NumericVector::iterator next_record = times.begin();
-
+  parms.lamda_ex = as<arma::vec>(parm["lamda_ex"]);
+  parms.times = as<arma::vec>(parm["times"]);
+  
+  double time_max = parms.times(parms.times.n_elem - 1);
   //define functions based on options
   int dispersalfn = as<int>(parm["dispersalfn"]);
   int seedshadow = as<int>(parm["seedshadow"]);
@@ -109,21 +109,24 @@ int run_sodi_rcpp(DataFrame init, List parm, bool progress, CharacterVector file
   state.I = as<arma::ivec>(init["Infections"]);
   state.F.zeros(parms.K);
   state.B.zeros(parms.K);
-  state.time = times(0);
+  state.time = parms.times(0);
+  state.next_record = parms.times.begin();
+
   
   for(uword k = 0; k < state.treecount; k++) {
     state.B(k) = beta_f(parms.beta(state.S(k)), state.I(k), parms.max_inf(state.S(k)));
-    state.F(k) = sum(kernel1(distance(state, k), parms.m(state.S)) % state.I % parms.lamda(state.S)) * state.B(k);
+    state.F(k) = sum((kernel1(distance(state, k), parms.m(state.S)) % state.I % parms.lamda(state.S)));
   }
-  
+
   state.E = fmax(0, 1 - sum(parms.omega(state.S)) / parms.K);
   arma::mat R(parms.K, 6);
-  R.col(1) = state.E * parms.f(state.S);
-  R.col(2) = parms.d(state.S) + state.I % parms.alpha(state.S) % (1 - parms.r(state.S));
-  R.col(3) = parms.g(state.S);
-  R.col(4) = state.F;
-  R.col(5) = state.I % parms.mu(state.S);
-  R.col(6) = state.I %parms.alpha(state.S) % parms.r(state.S);
+  R.col(0) = state.E * parms.f(state.S);
+  R.col(1) = parms.d(state.S) + state.I % parms.alpha(state.S) % (1 - parms.r(state.S));
+  R.col(2) = parms.g(state.S);
+  R.col(3) = (state.F % state.B) + parms.lamda_ex(0);
+  R.col(4) = state.I % parms.mu(state.S);
+  R.col(5) = state.I %parms.alpha(state.S) % parms.r(state.S);
+  
   
   RNGScope scope;
   IntegerVector Index = seq_len(parms.K) - 1;
@@ -136,26 +139,36 @@ int run_sodi_rcpp(DataFrame init, List parm, bool progress, CharacterVector file
   arma::mat printmatrix(parms.K,6);  
   std::ofstream outfile;
   outfile.open(filename.c_str(), ios::out | ios::app);
-
-  ++next_record;
+  arma::rowvec jrow(6);
 
 //Start the loop
-  while (state.time < time_max) {
- 
-    //Record when we pass a value in the times vector
-    if (state.time >= *next_record) {
-      print_state(*next_record, state, outfile, printmatrix);
-      ++next_record;
-      }
+  while (*(state.next_record) < time_max) {
 
     //Calculate individual-level event rates and next time step.
+
     state.time = state.time + as<double>(rexp(1, accu(R)));
-    
+
+    //Record when we pass a value in the times vector
+    while (state.time > *(state.next_record) && *(state.next_record) < time_max) {
+
+      print_state(state, outfile, printmatrix);
+      if (progress) {
+       Rcpp::Rcout << "\nTime: " << *(state.next_record) << ", Population:" << state.treecount << ", Complete:" << Rf_fround(100 * *(state.next_record)/time_max, 1) << " %     ";
+      }
+     ++(state.next_record);
+    }
+
+    if(state.treecount == 0) break;
     //Select the individual that will change this time step
-    j = as<uword>(Rcpp::RcppArmadillo::sample(Index, 1, false, as<NumericVector>(wrap(sum(state.R,1)))));
-    action = as<int>(Rcpp::RcppArmadillo::sample(actions, 1, false, as<NumericVector>(wrap(state.R.row(j)))));
+    j = as<uword>(Rcpp::RcppArmadillo::sample(Index, 1, false, as<NumericVector>(wrap(sum(R,1)))));
+    jrow = R.row(j);
+    action = as<int>(Rcpp::RcppArmadillo::sample(actions, 1, false, as<NumericVector>(wrap(jrow))));
     s = state.S(j);
     i = state.I(j);
+    
+
+  //  Rcpp::Rcout << action << " " << j << " " << s << " " << i << " " << state.treeindex << " " << state.treecount << std::endl;
+
 
     //Call the updating function on the individual
     switch (action) {  
@@ -178,11 +191,17 @@ int run_sodi_rcpp(DataFrame init, List parm, bool progress, CharacterVector file
        resprout(state, parms, R, j, s, i);
        break;
     }
+    
+//    R = as<arma::mat>(wrap(pmax(0, as<NumericMatrix>(wrap(R)))));
 
-  R = as<arma::mat>(wrap(pmax(0, as<NumericMatrix>(wrap(R)))));
   
   }
-  
+  if(state.treecount > 0) {
+    print_state(state, outfile, printmatrix);
+  }
+  if (progress) {
+     Rcpp::Rcout << "\nTime: " << *(state.next_record) << ", Population:" << state.treecount << ", Complete:" << Rf_fround(100 * *(state.next_record)/time_max, 1) << " %     ";
+  }
   #if PROFILE
   ProfilerStop();
   #endif

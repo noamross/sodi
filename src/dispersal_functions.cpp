@@ -56,8 +56,8 @@ arma::vec powvec(arma::vec A, arma::ivec p) {
 
 arma::vec flatseed(double x, double y, int s, parmlist &parms) {
   arma::vec loc(2);
-  loc(1) = Rcpp::as<double>(Rcpp::runif(1, parms.bbox(0), parms.bbox(1)));
-  loc(2) = Rcpp::as<double>(Rcpp::runif(1, parms.bbox(2), parms.bbox(3)));
+  loc(0) = Rcpp::as<double>(Rcpp::runif(1, parms.bbox(0), parms.bbox(1)));
+  loc(1) = Rcpp::as<double>(Rcpp::runif(1, parms.bbox(2), parms.bbox(3)));
   return loc;
 }
 
@@ -65,8 +65,8 @@ arma::vec normseed(double x, double y, int s, parmlist &parms) {
   arma::vec loc(2);
   double theta = Rcpp::as<double>(Rcpp::runif(1, 0, 2*M_PI));
   double dist = Rcpp::as<double>(Rcpp::rnorm(1, parms.seedm(s)));
-  loc(1) = x + cos(theta) * dist;
-  loc(2) = y + sin(theta) * dist;
+  loc(0) = x + cos(theta) * dist;
+  loc(1) = y + sin(theta) * dist;
   return loc;
 }
 
@@ -74,7 +74,7 @@ arma::vec expseed(double x, double y, int s, parmlist &parms) {
   arma::vec loc(2);
   double theta = Rcpp::as<double>(Rcpp::runif(1, 0, 2*M_PI));
   double dist = Rcpp::as<double>(Rcpp::rexp(1, parms.seedm(s)));
-  loc(1) = x + cos(theta) * dist;
-  loc(2) = y + sin(theta) * dist;
+  loc(0) = x + cos(theta) * dist;
+  loc(1) = y + sin(theta) * dist;
   return loc;
 }
