@@ -7,7 +7,7 @@ double lamda_interp(statelist &state, parmlist &parms) {
   
   arma::uword index = state.next_record - parms.times.begin();
   double a = parms.lamda_ex(index-1) + (state.time - parms.times(index-1)) * (parms.lamda_ex(index) - parms.lamda_ex(index-1)) / (parms.times(index) - parms.times(index-1));
-  Rcout << "\n" << index << " " << parms.times(index-1) << " " << parms.times(index) << " " << state.time << " " << parms.lamda_ex(index-1) << " " << parms.lamda_ex(index) << " " << a;
+//  Rcout << "\n" << index << " " << parms.times(index-1) << " " << parms.times(index) << " " << state.time << " " << parms.lamda_ex(index-1) << " " << parms.lamda_ex(index) << " " << a;
   return a;
 }
 

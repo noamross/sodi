@@ -60,6 +60,8 @@ int run_sodi_rcpp(DataFrame init, List parm, bool progress, CharacterVector file
   parms.lamda_ex = as<arma::vec>(parm["lamda_ex"]);
   parms.times = as<arma::vec>(parm["times"]);
   
+  int startcount = max(parms.K, parms.N);
+  
   double time_max = parms.times(parms.times.n_elem - 1);
   //define functions based on options
   int dispersalfn = as<int>(parm["dispersalfn"]);
@@ -107,8 +109,8 @@ int run_sodi_rcpp(DataFrame init, List parm, bool progress, CharacterVector file
   state.Y = as<arma::vec>(init["Y"]);
   state.S = as<arma::uvec>(init["Stage"]);
   state.I = as<arma::ivec>(init["Infections"]);
-  state.F.zeros(parms.K);
-  state.B.zeros(parms.K);
+  state.F.zeros(startcount);
+  state.B.zeros(startcount);
   state.time = parms.times(0);
   state.next_record = parms.times.begin();
 
@@ -119,7 +121,7 @@ int run_sodi_rcpp(DataFrame init, List parm, bool progress, CharacterVector file
   }
 
   state.E = fmax(0, 1 - sum(parms.omega(state.S)) / parms.K);
-  arma::mat R(parms.K, 6);
+  arma::mat R(startcount, 6);
   R.col(0) = state.E * parms.f(state.S);
   R.col(1) = parms.d(state.S) + state.I % parms.alpha(state.S) % (1 - parms.r(state.S));
   R.col(2) = parms.g(state.S);
@@ -129,14 +131,14 @@ int run_sodi_rcpp(DataFrame init, List parm, bool progress, CharacterVector file
   
   
   RNGScope scope;
-  IntegerVector Index = seq_len(parms.K) - 1;
+  IntegerVector Index = seq_len(startcount) - 1;
   IntegerVector actions = seq_len(6);
   uword s;
   int i;
   int j;
   int action;
   
-  arma::mat printmatrix(parms.K,6);  
+  arma::mat printmatrix(startcount,6);  
   std::ofstream outfile;
   outfile.open(filename.c_str(), ios::out | ios::app);
   arma::rowvec jrow(6);

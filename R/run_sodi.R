@@ -28,7 +28,7 @@ run_sodi <- function(parms=NULL, init=NULL, reps=1, progress=FALSE, parallel=FAL
       saveRDS(parms[[z]], dpnames[[z]])
       run_sodi_single(parms=parms[[z]], init=init, progress=FALSE,
                       filename=dfnames[z])
-    }, .progress = ifelse(progress, "time", "none"), .parallel=parallel)
+    }, .progress = ifelse((progress & !parallel), "time", "none"), .parallel=parallel)
   } else {
     saveRDS(parms, paste0(fname, ".parms.rds"))
     run_sodi_single(parms, init=init, progress=progress, filename=paste0(fname, ".csv"))
@@ -99,19 +99,19 @@ load_sodi_file_single <- function(name, runs=TRUE) {
 #' @import data.table plyr
 run_sodi_single <- function(parms, init, progress , filename) {
   
-  if(is.null(parms)) {
-    parms <- sodi::default_parms 
-  } else {
-    for(name in names(sodi::default_parms)) {
-      if(!exists(name, parms))
-      parms[[name]] <- sodi::default_parms[[name]]
-    }
-  }
-  
+#   if(is.null(parms)) {
+#     parms <- sodi::default_parms 
+#   } else {
+#     for(name in names(sodi::default_parms)) {
+#       if(!exists(name, parms))
+#       parms[[name]] <- sodi::default_parms[[name]]
+#     }
+#   }
+#   
   init <- if(is.null(init)) init <- initiate(parms)
 
   parms_mod <- parms
-  parms_mod$timenames = as.character(parms$times)
+  parms_mod$n0 = nrow(init)
   parms_mod <- within(parms_mod, {
          a_ply(c("f", "g", "d", "r", "alpha", "lamda",
                  "beta", "mu", "xi", "omega", "m", "seedm", "max_inf"),
@@ -123,14 +123,30 @@ run_sodi_single <- function(parms, init, progress , filename) {
 }
 
 
+#' @export
+#' @importFrom spatstat rmpoispp rmpoint
 initiate <- function(parms) {
   list2env(parms, environment())
-  init = data.frame(ID = c(1:n0, rep(0, K-n0)),
-                    X = c(runif(n0,min=bbox[1], max=bbox[2]), rep(0, K-n0)),
-                    Y = c(runif(n0,min=bbox[3], max=bbox[4]), rep(0, K-n0)),
-                    Stage = c(stages0, rep(0, K-n0)),
-                    Infections = c(rep(1, infect0), rep(0, K-infect0))
+  if(randinit==TRUE) {
+    if (is.null(parms$n0)) {
+      pp = rmpoispp(stages0, win = bbox, types = 1:sum(sp_stages))
+    } else {
+      pp = rmpoint(n0, stages0, win=bbox, types = 1:sum(sp_stages))
+    }
+    init = data.frame(ID = c(1:pp$n, rep(0, max(K - pp$n, 0))),
+                    X = c(pp$x, rep(0, max(K - pp$n, 0))),
+                    Y = c(pp$y, rep(0, max(K - pp$n, 0))),
+                    Stage = c(as.integer(pp$marks), rep(0, max(K - pp$n, 0))),
+                    Infections = c(rep(1, infect0), rep(0, max(K, pp$n) - infect0))
+                      )
+  } else {
+    init = data.frame(ID = c(1:n0, rep(0, max(K - n0, 0))),
+                    X = c(runif(n0,min=bbox[1], max=bbox[2]), rep(0, max(K - n0, 0))),
+                    Y = c(runif(n0,min=bbox[3], max=bbox[4]), rep(0, max(K - n0, 0))),
+                    Stage = c(stages0, rep(0, max(K - n0, 0))),
+                    Infections = c(rep(1, infect0), rep(0, max(K - n0, 0)))
                     )
+  }
   return(init)
 }
   

@@ -19,7 +19,9 @@ Imports:
     reshape2,
     spatstat,
     plotrix,
-    scales
+    scales,
+    Hmisc,
+    stringr
 LinkingTo: Rcpp, RcppArmadillo
 Collate:
     'run_sodi.R'
