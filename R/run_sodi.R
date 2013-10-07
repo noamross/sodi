@@ -124,7 +124,7 @@ run_sodi_single <- function(parms, init, progress , filename) {
 
 
 #' @export
-#' @importFrom spatstat rmpoispp rmpoint
+#' @import spatstat
 initiate <- function(parms) {
   list2env(parms, environment())
   if(randinit==TRUE) {
