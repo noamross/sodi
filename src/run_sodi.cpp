@@ -125,7 +125,7 @@ int run_sodi_rcpp(DataFrame init, List parm, bool progress, CharacterVector file
   R.col(0) = state.E * parms.f(state.S);
   R.col(1) = parms.d(state.S) + state.I % parms.alpha(state.S) % (1 - parms.r(state.S));
   R.col(2) = parms.g(state.S);
-  R.col(3) = (state.F % state.B) + parms.lamda_ex(0);
+  R.col(3) = (state.F + parms.lamda_ex(0)) % state.B; 
   R.col(4) = state.I % parms.mu(state.S);
   R.col(5) = state.I %parms.alpha(state.S) % parms.r(state.S);
   
