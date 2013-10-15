@@ -22,6 +22,7 @@ run_sodi <- function(parms=NULL, init=NULL, reps=1, progress=FALSE, parallel=FAL
     if(is.null(names(parms))) names(parms) <- 1:length(parms)
     reps = rep(reps, length.out=length(parms))
     parms = rep(parms, reps)
+    parms = parms[sample(1:length(parms), length(parms)]
     dfnames = paste0(fname,".", names(parms), ".", 1:length(parms), ".csv")
     dpnames = paste0(fname,".", names(parms), ".", 1:length(parms), ".parms.rds")
     a_ply(1:length(parms), 1, function(z) {
