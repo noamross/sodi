@@ -23,7 +23,7 @@ registerDoMC(cores=8)
 # 15    UMCA      <NA>  1.000000
 
 parms1 <- list(
-  K=1000,                 #Carrying capacity
+  K=1168,                 #Carrying capacity
   bbox = c(0,100,0,100),   #Area dimensions
 #  n0 = 1000,               #Initial population
   infect0=0,             #Number of infected individuals at start
@@ -53,7 +53,7 @@ parms1 <- list(
 )
 
 parms2 <- list(
-  K=1000,                 #Carrying capacity
+  K=1168,                 #Carrying capacity
   bbox = c(0,100,0,100),   #Area dimensions
 #  n0 = 1000,               #Initial population
   infect0=0,             #Number of infected individuals at start
@@ -83,7 +83,7 @@ parms2 <- list(
 )
 
 parms3 <- list(
-  K=1000,                 #Carrying capacity
+  K=1168,                 #Carrying capacity
   bbox = c(0,100,0,100),   #Area dimensions
 #  n0 = 1000,               #Initial population
   infect0=0,             #Number of infected individuals at start
@@ -113,7 +113,7 @@ parms3 <- list(
 )
 
 parms4 <- list(
-  K=1000,                 #Carrying capacity
+  K=1168,                 #Carrying capacity
   bbox = c(0,100,0,100),   #Area dimensions
 #  n0 = 1000,               #Initial population
   infect0=0,             #Number of infected individuals at start

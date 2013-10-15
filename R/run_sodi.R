@@ -125,14 +125,14 @@ run_sodi_single <- function(parms, init, progress , filename) {
 
 
 #' @export
-#' @import spatstat
+#' @import spatstat sp
 initiate <- function(parms) {
   list2env(parms, environment())
   if(randinit==TRUE) {
     if (is.null(parms$n0)) {
-      pp = rmpoispp(stages0, win = bbox, types = 1:sum(sp_stages))
+      pp = spatstat::rmpoispp(stages0, win = bbox, types = 1:sum(sp_stages))
     } else {
-      pp = rmpoint(n0, stages0, win=bbox, types = 1:sum(sp_stages))
+      pp = spatstat::rmpoint(n0, stages0, win=bbox, types = 1:sum(sp_stages))
     }
     init = data.frame(ID = c(1:pp$n, rep(0, max(K - pp$n, 0))),
                     X = c(pp$x, rep(0, max(K - pp$n, 0))),
