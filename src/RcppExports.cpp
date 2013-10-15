@@ -7,16 +7,17 @@
 using namespace Rcpp;
 
 // run_sodi_rcpp
-List run_sodi_rcpp(DataFrame init, List parms, bool progress);
-RcppExport SEXP sodi_run_sodi_rcpp(SEXP initSEXP, SEXP parmsSEXP, SEXP progressSEXP) {
+int run_sodi_rcpp(DataFrame init, List parm, bool progress, CharacterVector file);
+RcppExport SEXP sodi_run_sodi_rcpp(SEXP initSEXP, SEXP parmSEXP, SEXP progressSEXP, SEXP fileSEXP) {
 BEGIN_RCPP
     SEXP __sexp_result;
     {
         Rcpp::RNGScope __rngScope;
         DataFrame init = Rcpp::as<DataFrame >(initSEXP);
-        List parms = Rcpp::as<List >(parmsSEXP);
+        List parm = Rcpp::as<List >(parmSEXP);
         bool progress = Rcpp::as<bool >(progressSEXP);
-        List __result = run_sodi_rcpp(init, parms, progress);
+        CharacterVector file = Rcpp::as<CharacterVector >(fileSEXP);
+        int __result = run_sodi_rcpp(init, parm, progress, file);
         PROTECT(__sexp_result = Rcpp::wrap(__result));
     }
     UNPROTECT(1);
