@@ -2,8 +2,10 @@
 library(sodi)
 library(manipulate)
 library(multicore)
+library(spatstat)
+library(ggplot2)
 library(doMC)
-registerDoMC(cores=8)
+registerDoMC(cores=7)
 
 # Per-plot stem counts
 # 1     LIDE         1  5.275229
@@ -36,8 +38,8 @@ parms1 <- list(
   sp_stages = c(4, 1, 1),        #vector of the number of size classes for each species
   m = c(0.2, 0.2, 0.2, 0.2, 0.2, 0.2),           #dispersal parameter
   seedm = c(1,1, 1, 1, 1, 1),          #dispersal parameter for reproduction
-  times = seq(0,100,1), #Times to report.  If a single number, the max time, and all events will be recorded
-  lamda_ex = rep(0.00003, 101), #Sequence of external force of infection.  Must be same length as times to report.
+  times = seq(0,300,1), #Times to report.  If a single number, the max time, and all events will be recorded
+  lamda_ex = rep(0.00003, 301), #Sequence of external force of infection.  Must be same length as times to report.
   f = c(0, 0.007, 0.2, 0.73, .077, .019),     #Fecundity parameter
   g = c(0.142, 0.2, 0.05, 0, 0, 0),         #Growth rates
   d = c(0.006, 0.003, 0.001, 0.032, .002, .005),   #Death rates
@@ -66,8 +68,8 @@ parms2 <- list(
   sp_stages = c(4, 1, 1),        #vector of the number of size classes for each species
   m = c(0.2, 0.2, 0.2, 0.2, 0.2, 0.2),           #dispersal parameter
   seedm = c(1,1, 1, 1, 1, 1),          #dispersal parameter for reproduction
-  times = seq(0,100,1), #Times to report.  If a single number, the max time, and all events will be recorded
-  lamda_ex = rep(0.0003, 101), #Sequence of external force of infection.  Must be same length as times to report.
+  times = seq(0,300,1), #Times to report.  If a single number, the max time, and all events will be recorded
+  lamda_ex = rep(0.0003, 301), #Sequence of external force of infection.  Must be same length as times to report.
   f = c(0, 0.007, 0.2, 0.73, .077, .019),     #Fecundity parameter
   g = c(0.142, 0.2, 0.05, 0, 0, 0),         #Growth rates
   d = c(0.006, 0.003, 0.001, 0.032, .002, .005),   #Death rates
@@ -96,8 +98,8 @@ parms3 <- list(
   sp_stages = c(4, 1, 1),        #vector of the number of size classes for each species
   m = c(0.2, 0.2, 0.2, 0.2, 0.2, 0.2),           #dispersal parameter
   seedm = c(1,1, 1, 1, 1, 1),          #dispersal parameter for reproduction
-  times = seq(0,100,1), #Times to report.  If a single number, the max time, and all events will be recorded
-  lamda_ex = rep(0.003, 101), #Sequence of external force of infection.  Must be same length as times to report.
+  times = seq(0,300,1), #Times to report.  If a single number, the max time, and all events will be recorded
+  lamda_ex = rep(0.003, 301), #Sequence of external force of infection.  Must be same length as times to report.
   f = c(0, 0.007, 0.2, 0.73, .077, .019),     #Fecundity parameter
   g = c(0.142, 0.2, 0.05, 0, 0, 0),         #Growth rates
   d = c(0.006, 0.003, 0.001, 0.032, .002, .005),   #Death rates
@@ -126,8 +128,8 @@ parms4 <- list(
   sp_stages = c(4, 1, 1),        #vector of the number of size classes for each species
   m = c(0.2, 0.2, 0.2, 0.2, 0.2, 0.2),           #dispersal parameter
   seedm = c(1,1, 1, 1, 1, 1),          #dispersal parameter for reproduction
-  times = seq(0,100,1), #Times to report.  If a single number, the max time, and all events will be recorded
-  lamda_ex = rep(0.03, 101), #Sequence of external force of infection.  Must be same length as times to report.
+  times = seq(0,300,1), #Times to report.  If a single number, the max time, and all events will be recorded
+  lamda_ex = rep(0.03, 301), #Sequence of external force of infection.  Must be same length as times to report.
   f = c(0, 0.007, 0.2, 0.73, .077, .019),     #Fecundity parameter
   g = c(0.142, 0.2, 0.05, 0, 0, 0),         #Growth rates
   d = c(0.006, 0.003, 0.001, 0.032, .002, .005),   #Death rates
@@ -142,10 +144,37 @@ parms4 <- list(
   beta_meth = 2 #Maximum infection method.  Zero for none, 1 for step function, 2 for decreasing probability
 )
 
-sodi = run_sodi(parms=list(vlow=parms1,low=parms2,med=parms3,high=parms4), name="risk", reps=10, progress=TRUE, parallel=TRUE)
+sodi = run_sodi(parms=list(vlow=parms1, low=parms2, med=parms3, high=parms4), name="risk", reps=100, progress=TRUE, parallel=TRUE, diagnostics=TRUE)
+counts = sodi[Species=="Tanoak", list(Parms=Parms[1], variable=c("T","I"), value=c(sum(Infections >= 0), sum(Infections >=1))), by="Time,Run"]
+counts2 = sodi[, list(Parms=Parms[1], Count=sum(Infections >= 0), PctInf=sum(Infections >=1)/sum(Infections >= 0), MeanInf=mean(Infections)), by="Time,Run,Species"]
+counts2[, CountL := c(NA,Count[1:(length(Count)-1)]), by="Run,Species"]
+counts2[, PctInfL := c(NA,PctInf[1:(length(PctInf)-1)]), by="Run,Species"]
+counts2[, TimeL := c(NA, Time[1:(length(Time) -1)]), by ="Run,Species"]
+counts2[, MeanInfL := c(NA, MeanInf[1:(length(MeanInf) -1)]), by ="Run,Species"]
+counts2 = counts2[!is.na(CountL),]
+ggplot(counts2, aes(x=TimeL, y=CountL, xend=Time, yend=Count, col=MeanInfL, group=paste(Run,Species))) + geom_segment(alpha=0.3) + facet_wrap(~Parms) + scale_color_continuous(low="blue", high="red")
+
+sodi <- load_sodi_files("risk-13-10-17-215330")
+
+subsodi <- sodi[Run==20,]
+library(manipulate)
+
+sodi_spatialplot(subsodi, 10)
+
+manipulate(sodi_spatialplot(subsodi, TIME), TIME=slider(min=0,max=200,step=1))
 
 
-
+ggplot(counts, aes(x=Time, y=value, col=variable, group=paste(Run,variable))) + geom_line(alpha=0.2) + facet_wrap(~Parms)
+#calculate mean mortality rate over course of infection
+#mortality is alpha times number of infections
+mortality = sodi[Species=="Tanoak", list(meanInf = mean(Infections[Infections >= 1]),  
+                                         YTD=1/mean(Infections[Infections >= 1]*parms1$alpha[Stage[1]]), 
+                                         InfT=sum(Infections >=1)), by="Time,Run,Parms,Stage"]
+mortality = mortality[!is.nan(YTD),]
+mortality[, drate := 1/YTD]
+ggplot(mortality, aes(x=Time, y=meanInf, col=Stage, group=paste(Run,Stage))) + geom_line(alpha=0.5) + facet_wrap(~Parms)
+ggplot(subset(mortality, Stage==4), aes(x=InfT, y=YTD, col=as.factor(Stage), group=paste(Run,Stage))) + geom_line(alpha=0.3) + facet_wrap(~Parms)
+ggplot(subset(mortality, Stage==4), aes(x=InfT, y=drate, col=as.factor(Stage), group=paste(Run,Stage))) + geom_line(alpha=0.3) + facet_wrap(~Parms)
 manipulate(sodi_spatialplot(sodi, TIME), TIME = slider(0, tail(parms$times, 1), step=1))
 manipulate(sodi_infectionsplot(sodi, TIME), TIME=slider(0,tail(parms$times,1),1, step=1))
 manipulate(sodi_infectionsdensplot(sodi, TIME), TIME=slider(0,tail(parms$times,1),1, step=1))
@@ -155,5 +184,7 @@ sodi_SItimepolot(sodi)
 #Rprof("out.prof", line.profiling=TRUE)
 C_SI = CSI(sodi, progress="time", n.quantiles=6)
 #Rprof(NULL)
+
+
 
 manipulate(CSI_plot(C_SI, TIME), TIME=slider(0,tail(parms$times,1),0, step=1))
