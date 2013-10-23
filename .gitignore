@@ -9,3 +9,4 @@ src/*.dll
 *.prof
 *.out
 .Rapp.history
+risk*
