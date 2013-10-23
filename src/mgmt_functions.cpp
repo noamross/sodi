@@ -1,52 +1,56 @@
-#include <RcppArmadillo.h>
-#include "data_structures.h"
-#include "run_sodi.h"
+#include "includes.h"
 #include "dispersal_functions.h"
-#include "lamda_interp.h"
+#include "run_sodi.h"
+#include "mgmt_functions.h"
+
 using namespace Rcpp;
 using namespace arma;
 using namespace std;
 
-void thin_evenly(statelist &state, parmlist &parms, arma::mat &R, arma::uvec stages, double level) {
+void thin_evenly(statelist &state, parmlist &parms, arma::mat &R, arma::uvec stages, double level, bool resprout) {
   arma::uvec targets = zeros<uvec>(R.n_rows);
+  stages = stages(find(stages != 0));
   for(uvec::iterator stage = stages.begin(); stage != stages.end(); ++stage) {
     targets = targets + (state.S == *stage);
   }
   targets = find(targets);
   int killcount = static_cast<int>(round(level * targets.n_elem));
-  targets = as<arma::uvec>(Rcpp::RcppArmadillo::sample(as<IntegerVector>(targets), killcount, false);
-  kill_targets(state, parms, targets, TRUE)
+  targets = Rcpp::RcppArmadillo::sample(targets, killcount, false);
+  kill_targets(state, parms, R, targets, resprout);
   
 }
 
 //void thin_from_below(statelist &state, parmlist &parms, arma::mat &R, arma::uvec stages, double level) {}
 
-void thin_spacing(statelist &state, parmlist &parms, arma::mat &R, arma::uvec stages, double level) {
+void thin_spacing(statelist &state, parmlist &parms, arma::mat &R, arma::uvec stages, double level, bool resprout) {
 
   arma::uvec targets = zeros<uvec>(R.n_rows);
+  stages = stages(find(stages != 0));
   for(uvec::iterator stage = stages.begin(); stage != stages.end(); ++stage) {
     targets = targets + (state.S == *stage);
   }
   targets = find(targets);
   int killcount = static_cast<int>(round(level * targets.n_elem));
-  arma::vec nnd = nearest_neighbor_dist(state.X(targets)), state.Y(targets)));
-  arma::uvec killorder = stable_sort_index(nnd)
-  targets = killorder(span(0,killcount))
-  kill_targets(state, parms, targets, TRUE)
+  arma::vec Xtargs = state.X(targets);
+  arma::vec Ytargs = state.Y(targets);
+  arma::vec nnd = nearest_neighbor_dist(Xtargs, Ytargs);
+  arma::uvec killorder = stable_sort_index(nnd);
+  targets = killorder(span(0,killcount));
+  kill_targets(state, parms, R, targets, resprout);
 
 }
 
 //void space_from_below(statelist &state, parmlist &parms, arma::mat &R, arma::uvec stages, double level) {}
 
-arma::vec nearest_neighbor_dist(arma::vec &X, arma::vec &Y) {
-  arma::vec nnd(X.n_elem);
-  double dist, xi, yi
+arma::vec nearest_neighbor_dist(arma::vec &x, arma::vec &y) {
+  arma::vec nnd(x.n_elem);
+  double dist, xi, yi;
   uword i, j;
   double dist2 = datum::inf;
-  for(i = 0; i < X.n_elem; ++i) {
+  for(i = 0; i < x.n_elem; ++i) {
     xi = x(i);
     yi = y(i);
-    for(j = 0; j < X.n_elem; ++j) {
+    for(j = 0; j < x.n_elem; ++j) {
       if (i == j) continue;
       dist = pow(xi - x(j), 2) + pow(yi - y(j), 2);
       if (dist < dist2) dist2 = dist;
@@ -57,7 +61,7 @@ arma::vec nearest_neighbor_dist(arma::vec &X, arma::vec &Y) {
 }
 
 
-void recalc_probs(statelist &state, parmlist&parms, arma::mat &R) {
+void recalc_probs(statelist &state, parmlist &parms, arma::mat &R) {
   R.col(0) = state.E * parms.f(state.S);
   R.col(1) = parms.d(state.S) + state.I % parms.alpha(state.S) % (1 - parms.r(state.S));
   R.col(2) = parms.g(state.S);
@@ -66,23 +70,23 @@ void recalc_probs(statelist &state, parmlist&parms, arma::mat &R) {
   R.col(5) = state.I %parms.alpha(state.S) % parms.r(state.S);
   }
   
-void kill_targets(statelist &state, parmlist &parms, arma::uvec targets, bool resprout) {
+void kill_targets(statelist &state, parmlist &parms, arma::mat &R, arma::uvec targets, bool resprout) {
     
   if(resprout) {
-    arma::vec randvec = randu(vec(targets.n_elem));
+    arma::vec randvec = randu(targets.n_elem);
     arma::uvec resprouts = targets(find(randvec < parms.r(state.S(targets))));
     targets = targets(find(randvec > parms.r(state.S(targets))));
     state.S(resprouts) = parms.ss(state.S(resprouts));
-    state.I(resprouts) = 0;
+    state.I(resprouts) = zeros<ivec>(resprouts.n_elem);
     state.B(resprouts) = parms.beta(state.S(resprouts));
   }
   
-  state.S(targets) = 0;
-  state.I(targets) = 0;
-  state.X(targets) = 0;
-  state.Y(targets) = 0;
-  state.B(targets) = 0;
-  state.ID(targets) = 0;
+  state.S(targets) = zeros<uvec>(targets.n_elem);;
+  state.I(targets) = zeros<ivec>(targets.n_elem);;
+  state.X(targets) = zeros<vec>(targets.n_elem);;
+  state.Y(targets) = zeros<vec>(targets.n_elem);;
+  state.B(targets) = zeros<vec>(targets.n_elem);;
+  state.ID(targets) = zeros<uvec>(targets.n_elem);;
   
   state.treecount -= targets.n_elem;
   state.treeindex -= targets.n_elem;
@@ -91,11 +95,11 @@ void kill_targets(statelist &state, parmlist &parms, arma::uvec targets, bool re
   state.ID = state.ID(sortorder);
   state.X = state.X(sortorder);
   state.Y = state.Y(sortorder);
-  state.S = state.I(sortorder);
-  state.I = state.S(sortorder);  
+  state.S = state.S(sortorder);
+  state.I = state.I(sortorder);  
   state.E = fmax(0, 1 - sum(parms.omega(state.S)) / parms.K);
   for(uword k = 0; k < state.treecount; k++) {
-    state.F(k) = sum((kernel1(distance(state, k), parms.m(state.S)) % state.I % parms.lamda(state.S)));
+    state.F(k) = sum(kernel1(distance(state, k), parms.m(state.S)) % state.I % parms.lamda(state.S));
   }
   recalc_probs(state, parms, R);
 }

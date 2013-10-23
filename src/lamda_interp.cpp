@@ -1,4 +1,4 @@
-#include <RcppArmadillo.h>
+#include "includes.h"
 #include "data_structures.h"
 using namespace Rcpp;
 

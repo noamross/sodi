@@ -52,6 +52,12 @@ parms1 <- list(
   omega = c(1.93, 0.76, 0.66, 1.55, 1, 1),  #Competitive coefficient
   max_inf =  c(100, 100, 100, 100, 100, 100),  #Maximum number of infections per plant.  Set to 1 for S/I model.
   beta_meth = 2 #Maximum infection method.  Zero for none, 1 for step function, 2 for decreasing probability
+  
+  mg_actions = c(1, rep(0, 300)) #mgmt actions at each time point. Zero for nothing, others are indices of actionlist
+  mg_actionlist = c(1)     # 1 for thin_evenly, 2 for thin_spacing
+  mg_levels = c(0.5)       # level for each actions
+  mg_reprout = c(1)        # allow resprouts after action? 1 for yes, zero for no
+  mg_stages = matrix(c(1:4, 0, 0), nrow=1)
 )
 
 parms2 <- list(

@@ -1,5 +1,5 @@
 #include <fstream>
-#include <RcppArmadillo.h>
+#include "includes.h"
 #include "data_structures.h"
 
 void print_state(statelist &state, std::ofstream &outfile, arma::mat &printmatrix) {

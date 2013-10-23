@@ -131,8 +131,10 @@ run_sodi_single <- function(parms, init, progress , filename, diagnostics) {
   parms_mod$n0 = attr(init, "n0")
   parms_mod <- within(parms_mod, {
          a_ply(c("f", "g", "d", "r", "alpha", "lamda",
-                 "beta", "mu", "xi", "omega", "m", "seedm", "max_inf"),
+                 "beta", "mu", "xi", "omega", "m", "seedm", "max_inf",
+                 "mg_actionlist", "mg_levels", "mg_resprout"),
         1, function(z) {assign(z, c(0, get(z)), envir=sys.frame(-3))})})
+  parms_mod$mg_stages <- rbind(rep(0, ncol(parms_mod$mg_stages)), parms_mod$mg_stages)
   sp_stages <- rep(1:length(parms$sp_stages), parms$sp_stages)
   parms_mod$ss <- c(0, rep(which(diff(c(0, sp_stages))==1), parms$sp_stages))
   

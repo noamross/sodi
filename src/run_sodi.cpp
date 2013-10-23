@@ -6,7 +6,8 @@
 #endif
 
 // [[Rcpp::depends(RcppArmadillo)]]
-#include <RcppArmadilloExtensions/sample.h>
+#include "includes.h"
+#include "mgmt_functions.h"
 #include <fstream>
 #include <string>
 #include "data_structures.h"
@@ -16,6 +17,7 @@
 #include "print_state.h"
 #include "run_sodi.h"
 #include "lamda_interp.h"
+
 
 using namespace Rcpp;
 using namespace arma;
@@ -60,6 +62,12 @@ int run_sodi_rcpp(DataFrame init, List parm, bool progress, CharacterVector file
   parms.max_inf = as<arma::ivec>(parm["max_inf"]);
   parms.lamda_ex = as<arma::vec>(parm["lamda_ex"]);
   parms.times = as<arma::vec>(parm["times"]);
+  
+  parms.mg_actions = as<arma::uvec>(parm["mg_actions"]);
+  parms.mg_actionlist = as<arma::uvec>(parm["mg_actionlist"]);
+  parms.mg_levels = as<arma::vec>(parm["mg_levels"]);
+  parms.mg_resprout = as<LogicalVector>(parm["mg_resprout"]);
+  parms.mg_stages = as<arma::umat>(parm["mg_stages"]);
   
   int startcount = max(max(parms.K, parms.N), static_cast<int>(std::ceil(parms.K / arma::min(parms.omega(span(1, parms.omega.size() - 1))))));
   
@@ -114,6 +122,7 @@ int run_sodi_rcpp(DataFrame init, List parm, bool progress, CharacterVector file
   state.B.zeros(startcount);
   state.time = parms.times(0);
   state.next_record = parms.times.begin();
+  state.next_act = parms.mg_actions.begin();
 
   
   for(uword k = 0; k < state.treecount; k++) {
@@ -123,13 +132,7 @@ int run_sodi_rcpp(DataFrame init, List parm, bool progress, CharacterVector file
 
   state.E = fmax(0, 1 - sum(parms.omega(state.S)) / parms.K);
   arma::mat R(startcount, 6);
-  R.col(0) = state.E * parms.f(state.S);
-  R.col(1) = parms.d(state.S) + state.I % parms.alpha(state.S) % (1 - parms.r(state.S));
-  R.col(2) = parms.g(state.S);
-  R.col(3) = (state.F + parms.lamda_ex(0)) % state.B; 
-  R.col(4) = state.I % parms.mu(state.S);
-  R.col(5) = state.I %parms.alpha(state.S) % parms.r(state.S);
-  
+  recalc_probs(state, parms, R);
   
   RNGScope scope;
   IntegerVector Index = seq_len(startcount) - 1;
@@ -155,7 +158,7 @@ int run_sodi_rcpp(DataFrame init, List parm, bool progress, CharacterVector file
 
     //Record when we pass a value in the times vector
     while (state.time > *(state.next_record) && *(state.next_record) < time_max) {
-
+      mgmt_action(state, parms, R);
       print_state(state, outfile, printmatrix);
       if (progress) {
        Rcpp::Rcout << "\nTime: " << *(state.next_record) << ", Population:" << state.treecount << ", Complete:" << Rf_fround(100 * *(state.next_record)/time_max, 1) << " %     ";
@@ -228,4 +231,20 @@ int run_sodi_rcpp(DataFrame init, List parm, bool progress, CharacterVector file
   #endif
   outfile.close();
   return 1;
+}
+
+void mgmt_action(statelist &state, parmlist &parms, arma::mat R) {
+  uword act = parms.mg_actionlist(*(state.next_act));
+  switch (act) {
+    case 0:
+      break;
+    case 1:
+      thin_evenly(state, parms, R, parms.mg_stages.row(act), parms.mg_levels(act), parms.mg_resprout(act));
+      break;
+    case 2:
+      thin_spacing(state, parms, R, parms.mg_stages.row(act), parms.mg_levels(act), parms.mg_resprout(act));
+      break;
+  };
+  
+  ++(state.next_act);
 }

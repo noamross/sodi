@@ -1,7 +1,7 @@
 #ifndef STRUCTURES
 #define STRUCTURES
 
-#include <RcppArmadillo.h>
+#include "includes.h"
 
 struct parmlist {
     int K;
@@ -23,6 +23,11 @@ struct parmlist {
     arma::ivec max_inf;
     arma::vec lamda_ex;
     arma::vec times;
+    arma::uvec mg_actions;
+    arma::uvec mg_actionlist;
+    arma::vec mg_levels;
+    Rcpp::LogicalVector mg_resprout;
+    arma::umat mg_stages;
     
     };
 
@@ -41,6 +46,7 @@ struct statelist {
     arma::uword treeindex;
     double E;
     arma::vec::iterator next_record;
+    arma::uvec::iterator next_act;
 };
 
 

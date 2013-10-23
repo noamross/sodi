@@ -1,4 +1,4 @@
-#include <RcppArmadillo.h>
+#include "includes.h"
 #include "data_structures.h"
 
 //The dispersal functions - generate probability of infection from distance 

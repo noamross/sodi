@@ -1,7 +1,7 @@
 #ifndef DISPFUN
 #define DISPFUN
 
-#include <RcppArmadillo.h>
+#include "includes.h"
 #include "data_structures.h"
 
 extern arma::vec flatdisp(arma::vec d, arma::vec m);
