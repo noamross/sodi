@@ -1,9 +1,9 @@
 #' @export
 #' @import data.table plyr
 #' @importFrom plotrix listDepth
-run_sodi <- function(parms=NULL, init=NULL, reps=1, progress=FALSE, parallel=FALSE, name=NULL, load=TRUE, append_date=TRUE) {
+run_sodi <- function(parms=NULL, init=NULL, reps=1, progress=FALSE, parallel=FALSE, name=NULL, load=TRUE, append_date=TRUE, diagnostics=TRUE) {
   START = Sys.time()
-  wd = getwd()
+#  wd = getwd()
   if (is.null(name)) {
     fname="sodi"
   } else {
@@ -13,50 +13,52 @@ run_sodi <- function(parms=NULL, init=NULL, reps=1, progress=FALSE, parallel=FAL
   if (is.null(name) & load==TRUE) {
     dir = file.path(tempdir(), fname) 
   } else {
-    dir = file.path(wd, fname)
+    dir = file.path(getwd(), fname)
   }
   dir.create(dir)
-  setwd(dir)
+ # setwd(dir)
   if(listDepth(parms) > 1 || reps > 1) {
     if(listDepth(parms) == 1) parms=list(parms)
     if(is.null(names(parms))) names(parms) <- 1:length(parms)
     reps = rep(reps, length.out=length(parms))
     parms = rep(parms, reps)
     parms = parms[sample(1:length(parms), length(parms))]
-    dfnames = paste0(fname,".", names(parms), ".", 1:length(parms), ".csv")
-    dpnames = paste0(fname,".", names(parms), ".", 1:length(parms), ".parms.rds")
+    dfnames = file.path(fname, paste0(fname,".", names(parms), ".", 1:length(parms), ".csv"))
+    dpnames = file.path(fname, paste0(fname,".", names(parms), ".", 1:length(parms), ".parms.rds"))
     a_ply(1:length(parms), 1, function(z) {
       saveRDS(parms[[z]], dpnames[[z]])
       run_sodi_single(parms=parms[[z]], init=init, progress=FALSE,
-                      filename=dfnames[z])
+                      filename=dfnames[z], diagnostics=diagnostics)
     }, .progress = ifelse((progress & !parallel), "time", "none"), .parallel=parallel)
   } else {
     saveRDS(parms, paste0(fname, ".parms.rds"))
-    run_sodi_single(parms, init=init, progress=progress, filename=paste0(fname, ".csv"))
+    run_sodi_single(parms, init=init, progress=progress, filename=paste0(fname, ".csv"), diagnostics=diagnostics)
   }  
   if(load) {
-    sodi <- load_sodi_files(dir = dir, name=fname)
+    sodi <- load_sodi_files(dir = dir, name=fname, parallel=parallel)
   }
-  setwd(wd)
+#  setwd(wd)
   END = Sys.time()
-  if(progress) cat("\nCompleted in:", END-START, "s\n")
-  return(sodi)
+  runtime = END-START
+  if(progress) message(paste("Total time: ", runtime, " ", units(runtime)))
+  if(load) {return(sodi)} else {message("Done!")}
+  
 }
 
 #' @export
 #' @import stringr
 #' @importFrom Hmisc escapeRegex
-load_sodi_files <- function(dir=dir, name=basename(dir)) {
-  wd = getwd()
-  setwd(dir)
-  filenames = list.files(pattern=paste0(escapeRegex(name), ".*$"))
+load_sodi_files <- function(dir=dir, name=basename(dir), parallel=FALSE, progress="none", ff=FALSE) {
+#  wd = getwd()
+#  setwd(dir)
+  filenames = list.files(path=dir, pattern=paste0(escapeRegex(name), ".*$"))
   dmatches <- str_match(filenames, "^([^\\.]*\\.?(\\w*)\\.?(\\d*))\\.csv$")
   dmatches = dmatches[complete.cases(dmatches),]
   pmatches <- str_match(filenames, "^(.*)\\.parms\\.rds$")
   pmatches = pmatches[complete.cases(pmatches),]
   if(!is.matrix(dmatches)) dmatches <- matrix(dmatches, nrow=1)
   if(!is.matrix(pmatches)) dmatches <- matrix(pmatches, nrow=1)
-  sodi <- alply(dmatches[,2], 1, function(z) load_sodi_file_single(z, runs=(nrow(dmatches)!=1)))
+  sodi <- alply(dmatches[,2], 1, function(z) load_sodi_file_single(z, dir, runs=(nrow(dmatches)!=1)), .parallel=parallel, .progress=progress)
   if(length(sodi)==1) {
     sodi = sodi[[1]]
     class(sodi) <- c(class(sodi), "sodi")
@@ -69,20 +71,20 @@ load_sodi_files <- function(dir=dir, name=basename(dir)) {
     class(sodi) <- c(class(sodi), "sodi", "multisodi")
 
   }
-  setwd(wd)
+#  setwd(wd)
   return(sodi)
 }
 
 
-load_sodi_file_single <- function(name, runs=TRUE) {
-  dfile = list.files(pattern=paste0("^", escapeRegex(name),  "\\.csv$"))
-  pfile = list.files(pattern=paste0("^", escapeRegex(name),  "\\.parms\\.rds$"))
+load_sodi_file_single <- function(name, dir, runs=TRUE, ff=FALSE) {
+  dfile = list.files(path=dir, pattern=paste0("^", escapeRegex(name),  "\\.csv$"))
+  pfile = list.files(path=dir, pattern=paste0("^", escapeRegex(name),  "\\.parms\\.rds$"))
   if(length(dfile) > 1 || length(pfile) > 1) stop("Ambiguous filenames")
   colclasses=c("numeric", "integer", "numeric", "numeric", "integer", "integer")
   colnames=c("Time", "ID", "X", "Y", "Stage", "Infections")
-  sodi <- fread(dfile, colClasses=colclasses)
+  sodi <- fread(file.path(dir, dfile), colClasses=colclasses)
   setnames(sodi, colnames)
-  parms <- readRDS(pfile)
+  parms <- readRDS(file.path(dir, pfile))
   sp = rep(1:length(parms$sp_stages), parms$sp_stages)
   ss = c(0, rep(which(diff(c(0, sp))==1), parms$sp_stages))
   sodi[, Species := parms$sp_names[sp[Stage[1]]], by=Stage]
@@ -96,9 +98,23 @@ load_sodi_file_single <- function(name, runs=TRUE) {
   return(sodi)
 }
 
+# #' @export
+# #' @import ff ffbase
+# load_sodi_ff <- function((dir=dir, name=basename(dir), parallel=FALSE, progress="none", ff=FALSE) {
+#   filenames = list.files(path=dir, pattern=paste0(escapeRegex(name), ".*$"))
+#   dmatches <- str_match(filenames, "^([^\\.]*\\.?(\\w*)\\.?(\\d*))\\.csv$")
+#   dmatches = dmatches[complete.cases(dmatches),]
+#   pmatches <- str_match(filenames, "^(.*)\\.parms\\.rds$")
+#   pmatches = pmatches[complete.cases(pmatches),]
+#   if(!is.matrix(dmatches)) dmatches <- matrix(dmatches, nrow=1)
+#   if(!is.matrix(pmatches)) dmatches <- matrix(pmatches, nrow=1)
+#   colclasses=c("numeric", "integer", "numeric", "numeric", "integer", "integer", "factor", "integer")
+#   colnames=c("Time", "ID", "X", "Y", "Stage", "Infections", "Parms", "Run")
+#   
+# }
   
 #' @import data.table plyr
-run_sodi_single <- function(parms, init, progress , filename) {
+run_sodi_single <- function(parms, init, progress , filename, diagnostics) {
   
 #   if(is.null(parms)) {
 #     parms <- sodi::default_parms 
@@ -109,10 +125,10 @@ run_sodi_single <- function(parms, init, progress , filename) {
 #     }
 #   }
 #   
-  init <- if(is.null(init)) init <- initiate(parms)
-
+  if(is.null(init)) init <- initiate(parms)
+  diagname = paste0(filename, ".diag")
   parms_mod <- parms
-  parms_mod$n0 = nrow(init)
+  parms_mod$n0 = attr(init, "n0")
   parms_mod <- within(parms_mod, {
          a_ply(c("f", "g", "d", "r", "alpha", "lamda",
                  "beta", "mu", "xi", "omega", "m", "seedm", "max_inf"),
@@ -120,7 +136,7 @@ run_sodi_single <- function(parms, init, progress , filename) {
   sp_stages <- rep(1:length(parms$sp_stages), parms$sp_stages)
   parms_mod$ss <- c(0, rep(which(diff(c(0, sp_stages))==1), parms$sp_stages))
   
-  run_sodi_rcpp(init, parms_mod, progress, filename)
+  run_sodi_rcpp(init, parms_mod, progress, filename, diagnostics, diagname)
 }
 
 
@@ -131,23 +147,26 @@ initiate <- function(parms) {
   if(randinit==TRUE) {
     if (is.null(parms$n0)) {
       pp = spatstat::rmpoispp(stages0, win = bbox, types = 1:sum(sp_stages))
+      n0 = pp$n
     } else {
       pp = spatstat::rmpoint(n0, stages0, win=bbox, types = 1:sum(sp_stages))
     }
-    init = data.frame(ID = c(1:pp$n, rep(0, max(K - pp$n, 0))),
-                    X = c(pp$x, rep(0, max(K - pp$n, 0))),
-                    Y = c(pp$y, rep(0, max(K - pp$n, 0))),
-                    Stage = c(as.integer(pp$marks), rep(0, max(K - pp$n, 0))),
-                    Infections = c(rep(1, infect0), rep(0, max(K, pp$n) - infect0))
+    matsize = max(K, n0, ceiling(K/min(omega)))
+    init = data.frame(ID = c(1:pp$n, rep(0, max(matsize - pp$n, 0))),
+                    X = c(pp$x, rep(0, max(matsize - pp$n, 0))),
+                    Y = c(pp$y, rep(0, max(matsize - pp$n, 0))),
+                    Stage = c(as.integer(pp$marks), rep(0, max(matsize - pp$n, 0))),
+                    Infections = c(rep(1, infect0), rep(0, max(matsize, pp$n) - infect0))
                       )
   } else {
-    init = data.frame(ID = c(1:n0, rep(0, max(K - n0, 0))),
-                    X = c(runif(n0,min=bbox[1], max=bbox[2]), rep(0, max(K - n0, 0))),
-                    Y = c(runif(n0,min=bbox[3], max=bbox[4]), rep(0, max(K - n0, 0))),
-                    Stage = c(stages0, rep(0, max(K - n0, 0))),
-                    Infections = c(rep(1, infect0), rep(0, max(K - n0, 0)))
+    init = data.frame(ID = c(1:n0, rep(0, max(matsize - n0, 0))),
+                    X = c(runif(n0,min=bbox[1], max=bbox[2]), rep(0, max(matsize - n0, 0))),
+                    Y = c(runif(n0,min=bbox[3], max=bbox[4]), rep(0, max(matsize - n0, 0))),
+                    Stage = c(stages0, rep(0, max(matsize - n0, 0))),
+                    Infections = c(rep(1, infect0), rep(0, max(matsize - n0, 0)))
                     )
   }
+  attr(init, "n0") = n0
   return(init)
 }
   
