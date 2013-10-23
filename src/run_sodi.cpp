@@ -30,13 +30,14 @@ double (*beta_f)(double beta, int i, int max_inf);
 
 //' @export
 // [[Rcpp::export]]
-int run_sodi_rcpp(DataFrame init, List parm, bool progress, CharacterVector file) {
+int run_sodi_rcpp(DataFrame init, List parm, bool progress, CharacterVector file, bool diagnostics, CharacterVector diagname) {
   
   #if PROFILE
   ProfilerStart(PROFILE_FILE);
   #endif
   
   std::string filename = Rcpp::as<std::string>(file);
+  std::string diagfile = Rcpp::as<std::string>(diagname);
   
   //populate the parameter structure from the input list
   parmlist parms;
@@ -60,7 +61,7 @@ int run_sodi_rcpp(DataFrame init, List parm, bool progress, CharacterVector file
   parms.lamda_ex = as<arma::vec>(parm["lamda_ex"]);
   parms.times = as<arma::vec>(parm["times"]);
   
-  int startcount = max(parms.K, parms.N);
+  int startcount = max(max(parms.K, parms.N), static_cast<int>(std::ceil(parms.K / arma::min(parms.omega(span(1, parms.omega.size() - 1))))));
   
   double time_max = parms.times(parms.times.n_elem - 1);
   //define functions based on options
@@ -142,6 +143,8 @@ int run_sodi_rcpp(DataFrame init, List parm, bool progress, CharacterVector file
   std::ofstream outfile;
   outfile.open(filename.c_str(), ios::out | ios::app);
   arma::rowvec jrow(6);
+  std::ofstream outdiag;
+
 
 //Start the loop
   while (*(state.next_record) < time_max) {
@@ -168,10 +171,7 @@ int run_sodi_rcpp(DataFrame init, List parm, bool progress, CharacterVector file
     s = state.S(j);
     i = state.I(j);
     
-
-  //  Rcpp::Rcout << action << " " << j << " " << s << " " << i << " " << state.treeindex << " " << state.treecount << std::endl;
-
-
+    try {
     //Call the updating function on the individual
     switch (action) {  
     case 1: 
@@ -194,7 +194,26 @@ int run_sodi_rcpp(DataFrame init, List parm, bool progress, CharacterVector file
        break;
     }
     
-//    R = as<arma::mat>(wrap(pmax(0, as<NumericMatrix>(wrap(R)))));
+    } catch (std::exception &e) {
+      if(diagnostics) {
+      outdiag.open(diagfile.c_str(), ios::out | ios::app);
+
+      R.save(outdiag, arma::csv_ascii);
+      outdiag << "\n" << action << " " << j << " " << s << " " << i << " " << state.treeindex << " " << state.treecount << " " << state.F(j) <<
+                  " " << state.B(j) << std::endl;
+      outdiag << jrow << std::endl;
+      outdiag << startcount << std::endl;
+      outdiag << e.what() << std::endl;
+      Rcerr << "Error in simulation loop. Diagnostics in " << diagfile << std::endl;
+      outdiag.close();
+
+      break;
+      } else {
+        Rcerr << "Error in simulation loop.";
+        break;
+      }
+    };
+    
 
   
   }
